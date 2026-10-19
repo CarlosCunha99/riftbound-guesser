@@ -21,6 +21,7 @@ A static site built with [Vite](https://vitejs.dev/) and vanilla TypeScript (no 
 ```
 scripts/fetch_cards.py      # downloads + normalizes card data
 public/data/cards.json      # generated card list (committed, loaded at runtime)
+public/data/daily.json      # pinned daily schedule: day index -> card id (append-only)
 src/logic/                  # pure game logic (compare, daily seed, knowledge, search, share, storage) + tests
 src/ui/                     # DOM rendering and app controller
 src/styles.css              # design tokens and layout
@@ -45,7 +46,7 @@ Cards come from the Hugging Face dataset [`Wysme/riftbound-cards`](https://huggi
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r scripts/requirements.txt      # Windows: .venv\Scripts\pip
-.venv/bin/python scripts/fetch_cards.py                # writes public/data/cards.json
+.venv/bin/python scripts/fetch_cards.py                # writes cards.json and extends daily.json
 ```
 
 You can also normalize a local JSON export with `python scripts/fetch_cards.py --source cards.json`.
@@ -59,9 +60,11 @@ The script applies the game's data rules:
 - Names that exist in several sets get a "— Set" suffix.
 - Hint-only fields are kept too: `rarity`, `labels` (type labels beyond the main type), `tags`, `ability` (`ability_effective`, falling back to `ability_original`), `artist` and `image`.
 
-The **Refresh card data** GitHub Actions workflow (`.github/workflows/refresh-cards.yml`) runs the script every Monday at 06:00 UTC, and you can also start it manually from the Actions tab. It commits `public/data/cards.json` when the data changes.
+The **Refresh card data** GitHub Actions workflow (`.github/workflows/refresh-cards.yml`) runs the script every night at 22:00 UTC, before the daily rolls over, and you can also start it manually from the Actions tab. When `public/data` changes, it commits to `main` and redeploys production with the new data (see Deploy).
 
-> The daily card is picked from the card list sorted by id and shuffled with a fixed seed, so adding new cards can change which card is chosen on future days.
+### Daily schedule
+
+Daily answers are pinned in `public/data/daily.json` (`ids[n]` is the card for day `n`, counted from 2026-10-19 UTC). The script only ever appends to it, keeping it 7 days ahead with cards that haven't been used yet, so refreshing the card list never changes today's card or any Archive answer. If a scheduled card disappears from the dataset, its previous entry is kept in `cards.json`. If the schedule has no entry for a day (for example, if every refresh failed for a week), the app falls back to a fixed-seed shuffle of the card list.
 
 ## Deploy
 
@@ -80,7 +83,7 @@ Import the GitHub repo in the host's dashboard and use the settings above.
 This repo is set up so that **publishing a GitHub release** deploys to production on Vercel:
 
 - `vercel.json` turns off automatic deploys from `main`. Pull requests still get Vercel preview URLs.
-- `.github/workflows/deploy-release.yml` runs when a release is published (pre-releases are skipped). It runs the tests, then builds and deploys that tag with the Vercel CLI. You can also run it manually from the Actions tab.
+- `.github/workflows/deploy-release.yml` runs when a release is published (pre-releases are skipped). It checks out that tag, takes `public/data` from `main`, runs the tests, then builds and deploys with the Vercel CLI. When started manually or by the nightly data refresh, it deploys the latest full release the same way.
 
 One-time setup:
 
@@ -91,7 +94,7 @@ One-time setup:
 
 To ship an update: merge to `main`, then on GitHub go to **Releases → Draft a new release**, create a tag (e.g. `v1.1.0`) and click **Publish release**.
 
-> The weekly card-data refresh commits to `main`, so new cards go live with your next release.
+> Code changes only go live when you publish a release. Card data and the daily schedule go live every night, on top of your latest release. At least one full (non pre-release) release must exist for anything to deploy.
 
 ## Disclaimer
 

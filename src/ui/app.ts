@@ -1,6 +1,6 @@
 import { ATTRS, MAX_GUESSES, type Card, type Clue } from '../types';
 import { compareCards, isSolved } from '../logic/compare';
-import { dailyNumber, dayDate, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from '../logic/daily';
+import { dailyCard, dailyNumber, dayDate, dayIndex, formatCountdown, msUntilNextDaily } from '../logic/daily';
 import { buildKnowledge, type Knowledge } from '../logic/knowledge';
 import { hintLadder, redactAbility, REDACTED, traits, type HintKind } from '../logic/hints';
 import { findExact, searchCards, type SearchResult } from '../logic/search';
@@ -75,6 +75,8 @@ export class App {
   constructor(
     private root: HTMLElement,
     private cards: Card[],
+    /** Pinned daily answers by day index (public/data/daily.json). */
+    private schedule: readonly string[] = [],
     private store = new Storage(),
   ) {
     this.byId = new Map(cards.map((c) => [c.id, c]));
@@ -104,7 +106,7 @@ export class App {
 
   private loadDay(day: number, mode: 'daily' | 'archive'): Game {
     const saved = this.store.daily(day);
-    const target = pickDaily(this.cards, day);
+    const target = dailyCard(this.cards, this.schedule, day, this.byId);
     const guesses = saved.guessIds.map((id) => this.byId.get(id)).filter((c): c is Card => !!c);
     return {
       mode,
@@ -505,7 +507,7 @@ export class App {
       if (done) played++;
       if (s?.status === 'won') won++;
       const n = s?.guessIds.length ?? 0;
-      const card = done ? pickDaily(this.cards, day) : null;
+      const card = done ? dailyCard(this.cards, this.schedule, day, this.byId) : null;
       const chip = !s || (!n && s.status === 'playing')
         ? `<span class="chip none">Not played</span>`
         : s.status === 'won'

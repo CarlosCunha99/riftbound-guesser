@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyNumber, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from './daily';
+import { dailyCard, dailyNumber, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from './daily';
 import { recordDaily, emptyStats, Storage } from './storage';
 import type { Card } from '../types';
 
@@ -35,6 +35,16 @@ describe('daily seed', () => {
   it('handles negative days and wraps around', () => {
     expect(pickDaily(pool, -1).id).toBe(pickDaily(pool, pool.length - 1).id);
     expect(pickDaily(pool, pool.length).id).toBe(pickDaily(pool, 0).id);
+  });
+  it('uses the pinned schedule regardless of the card list', () => {
+    const schedule = ['c-007', 'c-042'];
+    expect(dailyCard(pool, schedule, 0).id).toBe('c-007');
+    expect(dailyCard(pool.slice(5), schedule, 1).id).toBe('c-042'); // pool changed, answer did not
+  });
+  it('falls back to the shuffle when the schedule has no usable entry', () => {
+    expect(dailyCard(pool, ['c-001'], 3).id).toBe(pickDaily(pool, 3).id); // past the end
+    expect(dailyCard(pool, ['gone'], 0).id).toBe(pickDaily(pool, 0).id); // unknown card
+    expect(dailyCard(pool, [], 0).id).toBe(pickDaily(pool, 0).id);
   });
   it('counts down to UTC midnight', () => {
     expect(msUntilNextDaily(new Date('2026-10-19T23:00:00Z'))).toBe(3_600_000);

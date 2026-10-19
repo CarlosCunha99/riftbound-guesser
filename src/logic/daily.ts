@@ -51,6 +51,16 @@ export function pickDaily(cards: Card[], day: number): Card {
   return sorted[((day % n) + n) % n];
 }
 
+/**
+ * The daily card: the pinned schedule entry (public/data/daily.json) when it exists and the card
+ * is known, otherwise the shuffled fallback. Pinning keeps answers stable when the card list changes.
+ */
+export function dailyCard(cards: Card[], schedule: readonly string[], day: number, byId?: Map<string, Card>): Card {
+  const id = day >= 0 ? schedule[day] : undefined;
+  const card = id ? (byId ? byId.get(id) : cards.find((c) => c.id === id)) : undefined;
+  return card ?? pickDaily(cards, day);
+}
+
 export function formatCountdown(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const pad = (v: number) => String(v).padStart(2, '0');
