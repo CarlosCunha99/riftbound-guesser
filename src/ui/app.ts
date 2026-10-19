@@ -239,6 +239,7 @@ export class App {
         <input id="guess" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="results"
           aria-label="Search a card" placeholder="Search a card…" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
         <kbd aria-hidden="true">↵</kbd>
+        <span class="left-badge" id="left-badge" aria-hidden="true"></span>
         <button type="button" class="btn" id="submit">Guess</button>
       </div>
       <ul class="drop" id="results" role="listbox" aria-label="Matching cards" hidden></ul>
@@ -558,6 +559,9 @@ export class App {
       <div class="pips ${pipCls}" role="img" aria-label="${n} of ${MAX_GUESSES} guesses used">${pips}<span class="count">${n}/${MAX_GUESSES}</span></div>`;
     this.input.disabled = g.status !== 'playing';
     ($(this.root, '#submit') as HTMLButtonElement).disabled = g.status !== 'playing';
+    const badge = $(this.root, '#left-badge');
+    badge.textContent = g.status === 'playing' ? `${left} left` : '';
+    badge.className = `left-badge ${g.status === 'playing' ? pipCls : ''}`;
   }
 
   private renderKnowledge(glow: boolean) {

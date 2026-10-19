@@ -47,6 +47,9 @@ img { display: block; }
 .pips.danger .pip:not(.used) { background: transparent; box-shadow: 0 0 0 2px var(--danger); }
 .pips.won .pip.used:last-of-type { background: var(--hit); }
 .count { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; margin-left: 8px; }
+.left-badge { display: none; flex-shrink: 0; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); padding: 3px 8px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line-2); white-space: nowrap; }
+.left-badge.warn { color: var(--near); border-color: #e0a93b66; }
+.left-badge.danger { color: var(--danger); border-color: var(--danger); }
 
 /* ===== Search ===== */
 .search { position: relative; }
@@ -242,6 +245,7 @@ dialog[open] { animation: fade 0.2s ease-out; }
   .search-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 18px 12px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 30%); }
   .search-dock .field { height: 48px; }
   .search-dock .field kbd { display: none; }
+  .search-dock .left-badge:not(:empty) { display: inline-block; }
   .search-dock .drop { top: auto; bottom: 54px; max-height: 50vh; }
   .end, .preview { grid-template-columns: 1fr; gap: 18px; }
   .end .cardimg { width: 160px; margin: auto; }
