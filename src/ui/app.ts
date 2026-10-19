@@ -1,7 +1,7 @@
 import { ATTRS, MAX_GUESSES, type Card, type Clue } from '../types';
 import { compareCards, isSolved } from '../logic/compare';
 import { dailyNumber, dayDate, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from '../logic/daily';
-import { buildKnowledge, describeRange, type Knowledge } from '../logic/knowledge';
+import { buildKnowledge, type Knowledge } from '../logic/knowledge';
 import { findExact, searchCards, type SearchResult } from '../logic/search';
 import { shareText } from '../logic/share';
 import { recordDaily, Storage, type Settings } from '../logic/storage';
@@ -31,6 +31,14 @@ const HINTS: { after: number; title: string; reveal: (c: Card) => string }[] = [
 ];
 
 const $ = <T extends Element = HTMLElement>(root: ParentNode, sel: string) => root.querySelector(sel) as T;
+
+/** One fixed slot in the "What you know" bar: the solved value in green, otherwise a muted "?". */
+function knowSlot(k: Knowledge, glow: boolean): string {
+  const v = k.solved ? show(k.value) : '';
+  const body = k.solved ? `${k.key === 'domain' && v !== '—' ? dot(v) : ''}${esc(v)}` : '?';
+  const aria = k.solved ? `${k.label}: ${v === '—' ? 'not applicable' : v}` : `${k.label}: unknown`;
+  return `<div class="k${k.solved ? ' solved' : ''}${glow ? ' glow' : ''}" role="group" aria-label="${esc(aria)}"><span aria-hidden="true">${k.label}</span><strong aria-hidden="true" title="${esc(v)}">${body}</strong></div>`;
+}
 
 export class App {
   private settings: Settings;
@@ -222,7 +230,7 @@ export class App {
     </div>
   </div>
   <section class="know-wrap" aria-labelledby="know-h">
-    <h2 id="know-h" class="sr-only">What you know</h2>
+    <div class="know-head"><h2 id="know-h">What you know</h2><span id="know-n" aria-label="attributes solved">0/6</span></div>
     <div class="know" id="know"></div>
   </section>
   <section class="board">
@@ -541,28 +549,9 @@ export class App {
     const next = buildKnowledge(this.game.clues);
     this.knowledge = next;
     $(this.root, '#know').innerHTML = next
-      .map((k, i) => {
-        const changed = glow && JSON.stringify(prev[i]) !== JSON.stringify(k);
-        let body: string;
-        let aria: string;
-        if (k.solved) {
-          const v = show(k.value);
-          body = `<strong>${k.key === 'domain' ? dot(v) : ''}${esc(v)}</strong>`;
-          aria = `${k.label}: ${v === '—' ? 'none' : v}, solved`;
-        } else if (ATTRS[i].numeric) {
-          const r = describeRange(k);
-          body = `<strong>${esc(r)}</strong>${r !== '?' ? '<div class="x">range</div>' : ''}`;
-          aria = `${k.label}: ${r === '?' ? 'unknown' : r}`;
-        } else if (k.excluded.length) {
-          body = `<div class="x">${k.excluded.map((x) => `<s>${esc(x)}</s>`).join(' ')}</div>`;
-          aria = `${k.label}: not ${k.excluded.join(', ')}`;
-        } else {
-          body = '<strong>?</strong>';
-          aria = `${k.label}: unknown`;
-        }
-        return `<div class="k${k.solved ? ' solved' : ''}${changed ? ' glow' : ''}" role="group" aria-label="${esc(aria)}"><span aria-hidden="true">${k.label}</span><div aria-hidden="true">${body}</div></div>`;
-      })
+      .map((k, i) => knowSlot(k, glow && !!prev[i] && !prev[i].solved && k.solved))
       .join('');
+    $(this.root, '#know-n').textContent = `${next.filter((k) => k.solved).length}/${next.length}`;
     if (glow) setTimeout(() => this.root.querySelectorAll('.k.glow').forEach((el) => el.classList.remove('glow')), 900);
   }
 
@@ -761,13 +750,10 @@ export class App {
       ex('might', 'miss', 6, 'down'),
       ex('set', 'miss', 'Origins'),
     ].join('');
-    const chips = `<div class="know" style="max-width:460px">
-      <div class="k solved"><span>Type</span><strong>Unit</strong></div>
-      <div class="k"><span>Domain</span><div class="x"><s>Calm</s></div></div>
-      <div class="k solved"><span>Cost</span><strong>4</strong></div>
-      <div class="k solved"><span>Power</span><strong>0</strong></div>
-      <div class="k"><span>Might</span><strong>≤ 4</strong><div class="x">range</div></div>
-      <div class="k"><span>Set</span><div class="x"><s>Origins</s></div></div></div>`;
+    const chips = `<div class="know" style="max-width:460px">${ATTRS.map(({ key, label }) => {
+      const value = ({ type: 'Unit', cost: 4, power: 0 } as Record<string, string | number>)[key];
+      return knowSlot({ key, label, solved: value !== undefined, value: value ?? null }, false);
+    }).join('')}</div>`;
     this.showDialog(`
       <h2 id="dlg-title">How to play</h2>
       <p class="sub">Find the mystery Riftbound card in ${MAX_GUESSES} guesses.</p>
@@ -775,7 +761,7 @@ export class App {
         <li><h3>Guess any card</h3><p>Type a name and pick a card from the list. Press <kbd>/</kbd> to jump to the search, <kbd>↑</kbd> <kbd>↓</kbd> to move through results and <kbd>↵</kbd> to guess.</p></li>
         <li><h3>Read the clues</h3><p>Each attribute is compared with the mystery card. <b style="color:var(--hit)">✓ green</b> is a match, <b style="color:var(--near)">±1 amber</b> is off by one and <b style="color:var(--muted)">✕ grey</b> is no match. Arrows show whether the answer is higher ↑ or lower ↓. “—” means not applicable (for example, Might on Spells and Gear).</p>
           <div class="mini" role="table" aria-label="Example row"><div role="row" style="display:contents">${exampleRow}</div></div></li>
-        <li><h3>Use what you know</h3><p>The summary bar collects every clue: solved values, ruled‑out options and number ranges. Stuck? Hints unlock after guesses 3, 6 and 8. Press <kbd>H</kbd> to use one.</p>${chips}</li>
+        <li><h3>Use what you know</h3><p>The summary bar shows every attribute one of your guesses matched exactly. Stuck? Hints unlock after guesses 3, 6 and 8. Press <kbd>H</kbd> to use one.</p>${chips}</li>
       </ol>
       <p class="sub" style="margin-top:18px"><b style="color:var(--text)">Daily</b>: one card per day, the same for everyone (resets at 00:00 UTC). <b style="color:var(--text)">Practice</b>: unlimited rounds, optionally filtered by set in Settings.</p>
       <div class="actions"><button type="button" class="btn" data-action="close">Let’s play</button></div>
