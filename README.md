@@ -6,8 +6,11 @@ A daily Wordle/Loldle-style game for the **Riftbound TCG**. Guess the mystery ca
 - **Practice**: unlimited rounds, with an optional set filter. Practice doesn't affect your streak.
 - **Archive**: every past daily, with your result for each one. Answers stay hidden until you finish that day, and you can play any daily you missed (replays don't affect your streak). History is stored per day in `localStorage` (`rbg.history`).
 - Clue tiles use colour, an icon (✓ / ±1 / ✕) and text, plus ↑/↓ for numbers. Numbers within ±1 count as "close".
-- A "What you know" bar summarises solved values, ruled-out options and number ranges.
-- Three progressive hints unlock after guesses 3, 6 and 8 (domain → first letter → blurred art). Hard mode turns them off.
+- A "What you know" bar shows only the attributes a guess matched exactly (X/6 solved).
+- Three progressive hints unlock after guesses 3, 6 and 8. They only reveal information the board never shows:
+  **Traits** (rarity, extra labels like Champion/Signature, and tags, minus any that match the card's own name) →
+  **Ability** (rules text with the card's name redacted as ▇▇▇) → **Art** (heavily blurred art plus the artist).
+  If a card lacks the data for a hint, the next hint type is used instead, so no hint is ever empty. Hard mode turns hints off.
 - The result screen has a Wordle-style share grid, guess distribution and a countdown to the next daily.
 - Works from the keyboard: `/` focuses search, `↑`/`↓` move through results, `↵` guesses and `H` uses a hint. It also respects `prefers-reduced-motion` and has a high-contrast setting.
 
@@ -18,6 +21,7 @@ A static site built with [Vite](https://vitejs.dev/) and vanilla TypeScript (no 
 ```
 scripts/fetch_cards.py      # downloads + normalizes card data
 public/data/cards.json      # generated card list (committed, loaded at runtime)
+public/data/daily.json      # pinned daily schedule: day index -> card id (append-only)
 src/logic/                  # pure game logic (compare, daily seed, knowledge, search, share, storage) + tests
 src/ui/                     # DOM rendering and app controller
 src/styles.css              # design tokens and layout
@@ -42,7 +46,7 @@ Cards come from the Hugging Face dataset [`Wysme/riftbound-cards`](https://huggi
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r scripts/requirements.txt      # Windows: .venv\Scripts\pip
-.venv/bin/python scripts/fetch_cards.py                # writes public/data/cards.json
+.venv/bin/python scripts/fetch_cards.py                # writes cards.json and extends daily.json
 ```
 
 You can also normalize a local JSON export with `python scripts/fetch_cards.py --source cards.json`.
@@ -54,10 +58,13 @@ The script applies the game's data rules:
 - Might is N/A (`null`, shown as "—") for Spell and Gear cards.
 - Cards with the Champion label get the type "Champion".
 - Names that exist in several sets get a "— Set" suffix.
+- Hint-only fields are kept too: `rarity`, `labels` (type labels beyond the main type), `tags`, `ability` (`ability_effective`, falling back to `ability_original`), `artist` and `image`.
 
-The **Refresh card data** GitHub Actions workflow (`.github/workflows/refresh-cards.yml`) runs the script every Monday at 06:00 UTC, and you can also start it manually from the Actions tab. It commits `public/data/cards.json` when the data changes.
+The **Refresh card data** GitHub Actions workflow (`.github/workflows/refresh-cards.yml`) runs the script every night at 22:00 UTC, before the daily rolls over, and you can also start it manually from the Actions tab. When `public/data` changes, it commits to `main` and redeploys production with the new data (see Deploy).
 
-> The daily card is picked from the card list sorted by id and shuffled with a fixed seed, so adding new cards can change which card is chosen on future days.
+### Daily schedule
+
+Daily answers are pinned in `public/data/daily.json` (`ids[n]` is the card for day `n`, counted from 2026-10-19 UTC). The script only ever appends to it, keeping it 7 days ahead with cards that haven't been used yet, so refreshing the card list never changes today's card or any Archive answer. If a scheduled card disappears from the dataset, its previous entry is kept in `cards.json`. If the schedule has no entry for a day (for example, if every refresh failed for a week), the app falls back to a fixed-seed shuffle of the card list.
 
 ## Deploy
 
@@ -76,7 +83,7 @@ Import the GitHub repo in the host's dashboard and use the settings above.
 This repo is set up so that **publishing a GitHub release** deploys to production on Vercel:
 
 - `vercel.json` turns off automatic deploys from `main`. Pull requests still get Vercel preview URLs.
-- `.github/workflows/deploy-release.yml` runs when a release is published (pre-releases are skipped). It runs the tests, then builds and deploys that tag with the Vercel CLI. You can also run it manually from the Actions tab.
+- `.github/workflows/deploy-release.yml` runs when a release is published (pre-releases are skipped). It checks out that tag, takes `public/data` from `main`, runs the tests, then builds and deploys with the Vercel CLI. When started manually or by the nightly data refresh, it deploys the latest full release the same way.
 
 One-time setup:
 
@@ -87,7 +94,7 @@ One-time setup:
 
 To ship an update: merge to `main`, then on GitHub go to **Releases → Draft a new release**, create a tag (e.g. `v1.1.0`) and click **Publish release**.
 
-> The weekly card-data refresh commits to `main`, so new cards go live with your next release.
+> Code changes only go live when you publish a release. Card data and the daily schedule go live every night, on top of your latest release. At least one full (non pre-release) release must exist for anything to deploy.
 
 ## Disclaimer
 

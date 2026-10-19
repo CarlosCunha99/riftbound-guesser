@@ -1,7 +1,8 @@
 import { ATTRS, MAX_GUESSES, type Card, type Clue } from '../types';
 import { compareCards, isSolved } from '../logic/compare';
-import { dailyNumber, dayDate, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from '../logic/daily';
-import { buildKnowledge, describeRange, type Knowledge } from '../logic/knowledge';
+import { dailyCard, dailyNumber, dayDate, dayIndex, formatCountdown, msUntilNextDaily } from '../logic/daily';
+import { buildKnowledge, type Knowledge } from '../logic/knowledge';
+import { hintLadder, redactAbility, REDACTED, traits, type HintKind } from '../logic/hints';
 import { findExact, searchCards, type SearchResult } from '../logic/search';
 import { shareText } from '../logic/share';
 import { recordDaily, Storage, type Settings } from '../logic/storage';
@@ -24,13 +25,35 @@ interface Game {
   status: 'playing' | 'won' | 'lost';
 }
 
-const HINTS: { after: number; title: string; reveal: (c: Card) => string }[] = [
-  { after: 3, title: 'Reveal the domain', reveal: (c) => `${dot(c.domain)} Domain: ${esc(c.domain)}` },
-  { after: 6, title: 'First letter of name', reveal: (c) => `Starts with “${esc(c.title.charAt(0).toUpperCase())}”` },
-  { after: 8, title: 'Blurred card art', reveal: (c) => `Blurred art${c.image ? `<img class="blur" src="${esc(c.image)}" alt="Blurred card art">` : ''}` },
-];
+const HINT_ICON: Record<HintKind, string> = { traits: '🏷️', ability: '📜', art: '🖼️', letter: '🔤' };
+
+/** Renders a revealed hint. Only shows information the board never shows. */
+function hintBody(kind: HintKind, c: Card): string {
+  switch (kind) {
+    case 'traits':
+      return `<span class="chips">${traits(c).map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</span>`;
+    case 'ability': {
+      const html = esc(redactAbility(c))
+        .replace(/\[([^\]\n]{1,24})\]/g, (_, k: string) => `<span class="kw${k.length <= 2 ? ' sym' : ''}">${k}</span>`)
+        .replace(/\n/g, '<br>');
+      return `<blockquote class="ability">${html}</blockquote>`;
+    }
+    case 'art':
+      return `<span class="hint-art"><img src="${esc(c.image)}" alt="Heavily blurred card art"></span>${c.artist ? `<small class="artist">Illustrated by ${esc(c.artist)}</small>` : ''}`;
+    case 'letter':
+      return `Starts with “${esc(c.title.charAt(0).toUpperCase())}”`;
+  }
+}
 
 const $ = <T extends Element = HTMLElement>(root: ParentNode, sel: string) => root.querySelector(sel) as T;
+
+/** One fixed slot in the "What you know" bar: the solved value in green, otherwise a muted "?". */
+function knowSlot(k: Knowledge, glow: boolean): string {
+  const v = k.solved ? show(k.value) : '';
+  const body = k.solved ? `${k.key === 'domain' && v !== '—' ? dot(v) : ''}${esc(v)}` : '?';
+  const aria = k.solved ? `${k.label}: ${v === '—' ? 'not applicable' : v}` : `${k.label}: unknown`;
+  return `<div class="k${k.solved ? ' solved' : ''}${glow ? ' glow' : ''}" role="group" aria-label="${esc(aria)}"><span aria-hidden="true">${k.label}</span><strong aria-hidden="true" title="${esc(v)}">${body}</strong></div>`;
+}
 
 export class App {
   private settings: Settings;
@@ -52,6 +75,8 @@ export class App {
   constructor(
     private root: HTMLElement,
     private cards: Card[],
+    /** Pinned daily answers by day index (public/data/daily.json). */
+    private schedule: readonly string[] = [],
     private store = new Storage(),
   ) {
     this.byId = new Map(cards.map((c) => [c.id, c]));
@@ -81,7 +106,7 @@ export class App {
 
   private loadDay(day: number, mode: 'daily' | 'archive'): Game {
     const saved = this.store.daily(day);
-    const target = pickDaily(this.cards, day);
+    const target = dailyCard(this.cards, this.schedule, day, this.byId);
     const guesses = saved.guessIds.map((id) => this.byId.get(id)).filter((c): c is Card => !!c);
     return {
       mode,
@@ -216,13 +241,14 @@ export class App {
         <input id="guess" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="results"
           aria-label="Search a card" placeholder="Search a card…" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
         <kbd aria-hidden="true">↵</kbd>
+        <span class="left-badge" id="left-badge" aria-hidden="true"></span>
         <button type="button" class="btn" id="submit">Guess</button>
       </div>
       <ul class="drop" id="results" role="listbox" aria-label="Matching cards" hidden></ul>
     </div>
   </div>
   <section class="know-wrap" aria-labelledby="know-h">
-    <h2 id="know-h" class="sr-only">What you know</h2>
+    <div class="know-head"><h2 id="know-h">What you know</h2><span id="know-n" aria-label="attributes solved">0/6</span></div>
     <div class="know" id="know"></div>
   </section>
   <section class="board">
@@ -422,7 +448,7 @@ export class App {
   private readyHints(): number[] {
     const g = this.game;
     if (this.settings.hardMode || g.status !== 'playing') return [];
-    return HINTS.map((h, i) => (g.guesses.length >= h.after && !g.hints.includes(i) ? i : -1)).filter((i) => i >= 0);
+    return hintLadder(g.target).map((h, i) => (g.guesses.length >= h.after && !g.hints.includes(i) ? i : -1)).filter((i) => i >= 0);
   }
 
   private useHint(i: number) {
@@ -430,9 +456,10 @@ export class App {
     this.game.hints.push(i);
     this.saveDaily();
     this.renderHints();
-    const tmp = document.createElement('div');
-    tmp.innerHTML = HINTS[i].reveal(this.game.target);
-    this.announce(`Hint ${i + 1}: ${tmp.textContent}`);
+    const h = hintLadder(this.game.target)[i];
+    const text =
+      h.kind === 'art' ? `blurred card art${this.game.target.artist ? `, illustrated by ${this.game.target.artist}` : ''}` : h.kind === 'traits' ? traits(this.game.target).join(', ') : h.kind === 'ability' ? redactAbility(this.game.target).replaceAll(REDACTED, 'redacted') : `starts with ${this.game.target.title.charAt(0)}`;
+    this.announce(`Hint ${i + 1}, ${h.title}: ${text}`);
   }
 
   // ---------- rendering ----------
@@ -480,7 +507,7 @@ export class App {
       if (done) played++;
       if (s?.status === 'won') won++;
       const n = s?.guessIds.length ?? 0;
-      const card = done ? pickDaily(this.cards, day) : null;
+      const card = done ? dailyCard(this.cards, this.schedule, day, this.byId) : null;
       const chip = !s || (!n && s.status === 'playing')
         ? `<span class="chip none">Not played</span>`
         : s.status === 'won'
@@ -534,6 +561,9 @@ export class App {
       <div class="pips ${pipCls}" role="img" aria-label="${n} of ${MAX_GUESSES} guesses used">${pips}<span class="count">${n}/${MAX_GUESSES}</span></div>`;
     this.input.disabled = g.status !== 'playing';
     ($(this.root, '#submit') as HTMLButtonElement).disabled = g.status !== 'playing';
+    const badge = $(this.root, '#left-badge');
+    badge.textContent = g.status === 'playing' ? `${left} left` : '';
+    badge.className = `left-badge ${g.status === 'playing' ? pipCls : ''}`;
   }
 
   private renderKnowledge(glow: boolean) {
@@ -541,28 +571,9 @@ export class App {
     const next = buildKnowledge(this.game.clues);
     this.knowledge = next;
     $(this.root, '#know').innerHTML = next
-      .map((k, i) => {
-        const changed = glow && JSON.stringify(prev[i]) !== JSON.stringify(k);
-        let body: string;
-        let aria: string;
-        if (k.solved) {
-          const v = show(k.value);
-          body = `<strong>${k.key === 'domain' ? dot(v) : ''}${esc(v)}</strong>`;
-          aria = `${k.label}: ${v === '—' ? 'none' : v}, solved`;
-        } else if (ATTRS[i].numeric) {
-          const r = describeRange(k);
-          body = `<strong>${esc(r)}</strong>${r !== '?' ? '<div class="x">range</div>' : ''}`;
-          aria = `${k.label}: ${r === '?' ? 'unknown' : r}`;
-        } else if (k.excluded.length) {
-          body = `<div class="x">${k.excluded.map((x) => `<s>${esc(x)}</s>`).join(' ')}</div>`;
-          aria = `${k.label}: not ${k.excluded.join(', ')}`;
-        } else {
-          body = '<strong>?</strong>';
-          aria = `${k.label}: unknown`;
-        }
-        return `<div class="k${k.solved ? ' solved' : ''}${changed ? ' glow' : ''}" role="group" aria-label="${esc(aria)}"><span aria-hidden="true">${k.label}</span><div aria-hidden="true">${body}</div></div>`;
-      })
+      .map((k, i) => knowSlot(k, glow && !!prev[i] && !prev[i].solved && k.solved))
       .join('');
+    $(this.root, '#know-n').textContent = `${next.filter((k) => k.solved).length}/${next.length}`;
     if (glow) setTimeout(() => this.root.querySelectorAll('.k.glow').forEach((el) => el.classList.remove('glow')), 900);
   }
 
@@ -579,12 +590,8 @@ export class App {
       })
       .reverse()
       .join('');
-    const ghost =
-      g.status === 'playing'
-        ? `<div class="row ghostrow" aria-hidden="true"><div class="artcell"><div class="art"></div></div>${'<div class="cell"></div>'.repeat(6)}</div>`
-        : '';
     const empty = g.guesses.length ? '' : '<p class="empty-board">Your guesses will appear here.</p>';
-    $(this.root, '#rows').innerHTML = ghost + rows + empty;
+    $(this.root, '#rows').innerHTML = rows + empty;
   }
 
   private renderHints() {
@@ -597,10 +604,11 @@ export class App {
     }
     el.className = 'hints';
     const ready = this.readyHints();
-    el.innerHTML = HINTS.map((h, i) => {
-      if (g.hints.includes(i)) return `<div class="hint used"><span>Hint ${i + 1} · used</span><p>${h.reveal(g.target)}</p></div>`;
+    el.innerHTML = hintLadder(g.target).map((h, i) => {
+      const name = `<span aria-hidden="true">${HINT_ICON[h.kind]}</span> ${h.title}`;
+      if (g.hints.includes(i)) return `<div class="hint used" data-kind="${h.kind}"><span>Hint ${i + 1} · ${h.title}</span><div class="hint-body">${hintBody(h.kind, g.target)}</div></div>`;
       if (ready.includes(i))
-        return `<button type="button" class="hint ready" data-hint="${i}" aria-keyshortcuts="H"><span>Hint ${i + 1} · ready</span><p>${h.title} →</p></button>`;
+        return `<button type="button" class="hint ready" data-hint="${i}" aria-keyshortcuts="H"><span>Hint ${i + 1} · ready</span><p>Reveal ${name} →</p></button>`;
       const when = g.status === 'playing' ? `after guess ${h.after}` : 'not used';
       return `<div class="hint locked"><span>Hint ${i + 1} · ${when}</span><p><span aria-hidden="true">🔒</span> ${h.title}</p></div>`;
     }).join('');
@@ -761,13 +769,10 @@ export class App {
       ex('might', 'miss', 6, 'down'),
       ex('set', 'miss', 'Origins'),
     ].join('');
-    const chips = `<div class="know" style="max-width:460px">
-      <div class="k solved"><span>Type</span><strong>Unit</strong></div>
-      <div class="k"><span>Domain</span><div class="x"><s>Calm</s></div></div>
-      <div class="k solved"><span>Cost</span><strong>4</strong></div>
-      <div class="k solved"><span>Power</span><strong>0</strong></div>
-      <div class="k"><span>Might</span><strong>≤ 4</strong><div class="x">range</div></div>
-      <div class="k"><span>Set</span><div class="x"><s>Origins</s></div></div></div>`;
+    const chips = `<div class="know" style="max-width:460px">${ATTRS.map(({ key, label }) => {
+      const value = ({ type: 'Unit', cost: 4, power: 0 } as Record<string, string | number>)[key];
+      return knowSlot({ key, label, solved: value !== undefined, value: value ?? null }, false);
+    }).join('')}</div>`;
     this.showDialog(`
       <h2 id="dlg-title">How to play</h2>
       <p class="sub">Find the mystery Riftbound card in ${MAX_GUESSES} guesses.</p>
@@ -775,7 +780,7 @@ export class App {
         <li><h3>Guess any card</h3><p>Type a name and pick a card from the list. Press <kbd>/</kbd> to jump to the search, <kbd>↑</kbd> <kbd>↓</kbd> to move through results and <kbd>↵</kbd> to guess.</p></li>
         <li><h3>Read the clues</h3><p>Each attribute is compared with the mystery card. <b style="color:var(--hit)">✓ green</b> is a match, <b style="color:var(--near)">±1 amber</b> is off by one and <b style="color:var(--muted)">✕ grey</b> is no match. Arrows show whether the answer is higher ↑ or lower ↓. “—” means not applicable (for example, Might on Spells and Gear).</p>
           <div class="mini" role="table" aria-label="Example row"><div role="row" style="display:contents">${exampleRow}</div></div></li>
-        <li><h3>Use what you know</h3><p>The summary bar collects every clue: solved values, ruled‑out options and number ranges. Stuck? Hints unlock after guesses 3, 6 and 8. Press <kbd>H</kbd> to use one.</p>${chips}</li>
+        <li><h3>Use what you know</h3><p>The summary bar shows every attribute one of your guesses matched exactly. Stuck? Hints unlock after guesses 3, 6 and 8 and only reveal things the board never shows: <b>Traits</b> (rarity, labels and tags), the card’s <b>Ability</b> text with its name blacked out, and its blurred <b>Art</b> with the artist. Press <kbd>H</kbd> to use one.</p>${chips}</li>
       </ol>
       <p class="sub" style="margin-top:18px"><b style="color:var(--text)">Daily</b>: one card per day, the same for everyone (resets at 00:00 UTC). <b style="color:var(--text)">Practice</b>: unlimited rounds, optionally filtered by set in Settings.</p>
       <div class="actions"><button type="button" class="btn" data-action="close">Let’s play</button></div>

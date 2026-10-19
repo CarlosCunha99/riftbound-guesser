@@ -1,18 +1,27 @@
 name: Refresh card data
 
+# Runs every night before the UTC midnight rollover. It refreshes cards.json, extends the pinned
+# daily schedule (daily.json) and, if anything changed, redeploys production with the new data.
 on:
   schedule:
-    - cron: "0 6 * * 1" # every Monday 06:00 UTC
+    - cron: "0 22 * * *" # daily 22:00 UTC; the schedule is kept 7 days ahead in case a run is late or fails
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
+
+concurrency:
+  group: refresh-cards
+  cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -23,17 +32,25 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
-      - name: Fetch and normalize cards
+      - name: Fetch cards and extend the daily schedule
         run: python scripts/fetch_cards.py
 
       - name: Commit changes
+        id: commit
         run: |
-          if git diff --quiet -- public/data/cards.json; then
-            echo "Card data unchanged."
+          if git diff --quiet -- public/data; then
+            echo "Card data and schedule unchanged."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/cards.json
-          git commit -m "chore(data): refresh Riftbound card data"
+          git add public/data
+          git commit -m "chore(data): refresh card data and daily schedule"
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Redeploy production with the new data
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-release.yml --repo "$GITHUB_REPOSITORY" --ref main

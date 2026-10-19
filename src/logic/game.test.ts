@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compareCards, compareNumeric, isSolved } from './compare';
-import { buildKnowledge, describeRange } from './knowledge';
+import { buildKnowledge } from './knowledge';
 import { shareText } from './share';
 import { findExact, searchCards } from './search';
 import type { Card } from '../types';
@@ -71,18 +71,21 @@ describe('buildKnowledge', () => {
     expect(k.type).toMatchObject({ solved: true, value: 'Unit' });
     expect(k.power).toMatchObject({ solved: true, value: 0 });
   });
-  it('lists ruled-out categorical values', () => {
-    expect(k.domain.excluded).toEqual(['Calm', 'Body']);
-    expect(k.set.excluded).toEqual(['Origins', 'Radiance']);
+  it('leaves non-exact clues unsolved and exposes no exclusions or ranges', () => {
+    for (const key of ['domain', 'set', 'cost', 'might']) expect(k[key]).toEqual({ key, label: k[key].label, solved: false, value: null });
   });
-  it('narrows numeric ranges from higher/lower clues', () => {
-    expect(k.cost).toMatchObject({ solved: false, min: 4, max: 6 });
-    expect(describeRange(k.cost)).toBe('4–6');
-    expect(k.might).toMatchObject({ solved: false, min: 4, max: null });
+  it('never solves from meeting higher/lower bounds', () => {
+    const kk = buildKnowledge([card({ cost: 2 }), card({ cost: 6 })].map((g) => compareCards(g, card({ cost: 4 }))));
+    expect(kk.find((x) => x.key === 'cost')).toMatchObject({ solved: false, value: null });
   });
-  it('deduces exact values from close clues and N/A from directionless misses', () => {
-    const kk = buildKnowledge([compareCards(card({ cost: 4, might: 2 }), card({ cost: 5, might: null }))]);
-    expect(kk.find((x) => x.key === 'cost')).toMatchObject({ solved: true, value: 5 });
+  it('never solves from near clues or number vs N/A misses', () => {
+    const row = compareCards(card({ cost: 4, power: 1, might: 2 }), card({ cost: 5, power: 0, might: null }));
+    expect(row.find((c) => c.key === 'cost')?.status).toBe('near');
+    const kk = buildKnowledge([row]);
+    for (const key of ['cost', 'power', 'might']) expect(kk.find((x) => x.key === key)).toMatchObject({ solved: false, value: null });
+  });
+  it('shows N/A when N/A was guessed exactly', () => {
+    const kk = buildKnowledge([compareCards(card({ might: null }), card({ might: null }))]);
     expect(kk.find((x) => x.key === 'might')).toMatchObject({ solved: true, value: null });
   });
 });
