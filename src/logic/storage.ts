@@ -25,12 +25,18 @@ export interface DailyState {
   startedAt: number | null;
   finishedAt: number | null;
   status: 'playing' | 'won' | 'lost';
+  /** True when played from the archive after its day had passed (doesn't count for stats). */
+  archive?: boolean;
 }
+
+/** Every daily the player has started, keyed by day index. */
+export type DailyHistory = Record<number, DailyState>;
 
 const KEYS = {
   settings: 'rbg.settings',
   stats: 'rbg.stats',
   daily: 'rbg.daily',
+  history: 'rbg.history',
   seenHelp: 'rbg.seenHelp',
 };
 
@@ -95,12 +101,20 @@ export class Storage {
   set stats(v: Stats) {
     this.write(KEYS.stats, v);
   }
+  /** All saved dailies. Also migrates the older single-day `rbg.daily` record. */
+  history(): DailyHistory {
+    const h = this.read<DailyHistory>(KEYS.history, {});
+    const legacy = this.read<DailyState | null>(KEYS.daily, null);
+    if (legacy && typeof legacy.day === 'number' && !h[legacy.day]) h[legacy.day] = legacy;
+    return h;
+  }
   daily(day: number): DailyState {
-    const saved = this.read<DailyState | null>(KEYS.daily, null);
-    if (saved && saved.day === day) return saved;
-    return { day, guessIds: [], hints: [], startedAt: null, finishedAt: null, status: 'playing' };
+    return this.history()[day] ?? { day, guessIds: [], hints: [], startedAt: null, finishedAt: null, status: 'playing' };
   }
   saveDaily(v: DailyState) {
+    const h = this.history();
+    h[v.day] = v;
+    this.write(KEYS.history, h);
     this.write(KEYS.daily, v);
   }
   get seenHelp(): boolean {

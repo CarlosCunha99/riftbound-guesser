@@ -62,4 +62,16 @@ describe('stats', () => {
     expect(st.daily(3).guessIds).toEqual(['a']);
     expect(st.daily(4).guessIds).toEqual([]);
   });
+  it('keeps a history of every daily and migrates the legacy single-day record', () => {
+    const m = new Map<string, string>([['rbg.daily', JSON.stringify({ day: 1, guessIds: ['x'], hints: [], startedAt: 1, finishedAt: 2, status: 'won' })]]);
+    const st = new Storage({ getItem: (k) => m.get(k) ?? null, setItem: (k, v) => void m.set(k, v) });
+    expect(st.daily(1).status).toBe('won');
+    st.saveDaily({ ...st.daily(2), guessIds: ['y'], status: 'lost' });
+    st.saveDaily({ ...st.daily(0), guessIds: ['z'], archive: true });
+    const h = st.history();
+    expect(Object.keys(h).map(Number).sort()).toEqual([0, 1, 2]);
+    expect(h[1].guessIds).toEqual(['x']);
+    expect(h[2].status).toBe('lost');
+    expect(h[0].archive).toBe(true);
+  });
 });

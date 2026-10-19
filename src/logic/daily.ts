@@ -14,6 +14,11 @@ export function dailyNumber(now: Date = new Date()): number {
   return dayIndex(now) + 1;
 }
 
+/** UTC midnight of the given day index. */
+export function dayDate(day: number): Date {
+  return new Date(DAILY_EPOCH + day * DAY_MS);
+}
+
 export function msUntilNextDaily(now: Date = new Date()): number {
   const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
   return next - now.getTime();

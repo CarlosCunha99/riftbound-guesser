@@ -1,13 +1,16 @@
 import { ATTRS, MAX_GUESSES, type Card, type Clue } from '../types';
 import { compareCards, isSolved } from '../logic/compare';
-import { dailyNumber, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from '../logic/daily';
+import { dailyNumber, dayDate, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from '../logic/daily';
 import { buildKnowledge, describeRange, type Knowledge } from '../logic/knowledge';
 import { findExact, searchCards, type SearchResult } from '../logic/search';
 import { shareText } from '../logic/share';
 import { recordDaily, Storage, type Settings } from '../logic/storage';
 import { artHtml, cellHtml, clueLabel, dot, esc, formatTime, show } from './render';
 
-type Mode = 'daily' | 'practice';
+type Mode = 'daily' | 'practice' | 'archive';
+type Tab = Mode;
+
+const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 interface Game {
   mode: Mode;
@@ -33,6 +36,10 @@ export class App {
   private settings: Settings;
   private daily!: Game;
   private practice: Game | null = null;
+  /** A past daily opened from the archive. */
+  private past: Game | null = null;
+  /** True while the archive list is shown instead of the board. */
+  private listing = false;
   private game!: Game;
   private results: SearchResult[] = [];
   private active = -1;
@@ -69,12 +76,15 @@ export class App {
 
   // ---------- state ----------
   private loadDaily() {
-    const day = dayIndex();
+    this.daily = this.loadDay(dayIndex(), 'daily');
+  }
+
+  private loadDay(day: number, mode: 'daily' | 'archive'): Game {
     const saved = this.store.daily(day);
     const target = pickDaily(this.cards, day);
     const guesses = saved.guessIds.map((id) => this.byId.get(id)).filter((c): c is Card => !!c);
-    this.daily = {
-      mode: 'daily',
+    return {
+      mode,
       day,
       target,
       guesses,
@@ -94,8 +104,9 @@ export class App {
     this.practice = { mode: 'practice', day: -1, target, guesses: [], clues: [], hints: [], startedAt: null, finishedAt: null, status: 'playing' };
   }
 
-  private saveDaily() {
-    const g = this.daily;
+  private saveDaily(g = this.game) {
+    if (g.mode === 'practice') return;
+    const prev = this.store.daily(g.day);
     this.store.saveDaily({
       day: g.day,
       guessIds: g.guesses.map((c) => c.id),
@@ -103,6 +114,7 @@ export class App {
       startedAt: g.startedAt,
       finishedAt: g.finishedAt,
       status: g.status,
+      archive: prev.archive || (g.mode === 'archive' && !prev.guessIds.length) || undefined,
     });
   }
 
@@ -120,24 +132,47 @@ export class App {
   }
 
   private gameLabel(g = this.game): string {
-    return g.mode === 'daily' ? `#${g.day + 1}` : 'Practice';
+    return g.mode === 'practice' ? 'Practice' : `#${g.day + 1}`;
+  }
+
+  private get tab(): Tab {
+    return this.listing ? 'archive' : this.game.mode;
   }
 
   private setMode(mode: Mode) {
+    this.closeDialog();
+    this.listing = false;
     if (mode === 'daily') {
       if (this.daily.day !== dayIndex()) this.loadDaily();
       this.game = this.daily;
-    } else {
+    } else if (mode === 'practice') {
       if (!this.practice || this.practice.status !== 'playing') this.newPractice();
       this.game = this.practice!;
+    } else {
+      this.listing = true;
     }
     this.clearSearch();
     this.knowledge = [];
     this.renderAll();
   }
 
+  private openDay(day: number) {
+    if (this.daily.day !== dayIndex()) this.loadDaily();
+    if (day === this.daily.day) return this.setMode('daily');
+    this.past = this.loadDay(day, 'archive');
+    this.listing = false;
+    this.game = this.past;
+    this.clearSearch();
+    this.knowledge = [];
+    this.renderAll();
+    window.scrollTo({ top: 0 });
+    if (this.game.status !== 'playing') this.openResult();
+    else if (matchMedia('(min-width: 768px)').matches) this.input.focus();
+  }
+
   private startPractice() {
     this.newPractice();
+    this.listing = false;
     this.game = this.practice!;
     this.closeDialog();
     this.clearSearch();
@@ -161,6 +196,7 @@ export class App {
   <div class="seg" role="group" aria-label="Game mode">
     <button type="button" data-mode="daily">Daily <span class="num">#${dailyNumber()}</span></button>
     <button type="button" data-mode="practice">Practice</button>
+    <button type="button" data-mode="archive">Archive</button>
   </div>
   <div class="icons">
     <button type="button" class="ib" data-open="stats" aria-label="Statistics" title="Stats">▥</button>
@@ -169,6 +205,8 @@ export class App {
   </div>
 </header>
 <main class="app">
+  <section class="archive" id="archive" aria-labelledby="archive-h" hidden></section>
+  <div id="play">
   <section class="status" id="status" aria-label="Game status"></section>
   <div class="search-dock">
     <div class="search">
@@ -200,6 +238,7 @@ export class App {
     </div>
   </section>
   <section id="hints" aria-label="Hints"></section>
+  </div>
   <footer class="foot">Unofficial fan project · not affiliated with Riot Games · <button type="button" data-open="help">About &amp; how to play</button></footer>
 </main>
 <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -248,10 +287,12 @@ export class App {
       if (cell) return this.toast(cell.dataset.tip!);
       if (t.closest('[data-action="result"]')) return this.openResult();
       if (t.closest('[data-action="practice"]')) return this.startPractice();
+      const day = t.closest<HTMLElement>('[data-day]');
+      if (day) return this.openDay(Number(day.dataset.day));
     });
 
     document.addEventListener('keydown', (e) => {
-      if ($<HTMLDialogElement>(this.root, '#dlg').open || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ($<HTMLDialogElement>(this.root, '#dlg').open || this.listing || e.ctrlKey || e.metaKey || e.altKey) return;
       const typing = (e.target as HTMLElement).matches?.('input, textarea, select');
       if (e.key === '/' && !typing) {
         e.preventDefault();
@@ -358,7 +399,7 @@ export class App {
       g.finishedAt = Date.now();
       if (g.mode === 'daily') this.store.stats = recordDaily(this.store.stats, g.day, g.status === 'won', g.guesses.length);
     }
-    if (g.mode === 'daily') this.saveDaily();
+    this.saveDaily(g);
 
     this.clearSearch();
     const left = MAX_GUESSES - g.guesses.length;
@@ -387,7 +428,7 @@ export class App {
   private useHint(i: number) {
     if (!this.readyHints().includes(i)) return;
     this.game.hints.push(i);
-    if (this.game.mode === 'daily') this.saveDaily();
+    this.saveDaily();
     this.renderHints();
     const tmp = document.createElement('div');
     tmp.innerHTML = HINTS[i].reveal(this.game.target);
@@ -396,13 +437,18 @@ export class App {
 
   // ---------- rendering ----------
   private renderAll() {
+    const tab = this.tab;
     this.root.querySelectorAll<HTMLElement>('[data-mode]').forEach((b) => {
-      const on = b.dataset.mode === this.game.mode;
+      if (!b.closest('.seg')) return;
+      const on = b.dataset.mode === tab;
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', String(on));
     });
     const num = this.root.querySelector('.seg .num');
     if (num) num.textContent = `#${this.daily.day + 1}`;
+    $(this.root, '#play').hidden = this.listing;
+    $(this.root, '#archive').hidden = !this.listing;
+    if (this.listing) return this.renderArchive();
     const playing = this.game.status === 'playing';
     this.input.disabled = !playing;
     ($(this.root, '#submit') as HTMLButtonElement).disabled = !playing;
@@ -412,18 +458,64 @@ export class App {
         : 'Search a card…'
       : this.game.mode === 'daily'
         ? 'Daily done — come back tomorrow or play practice'
-        : 'Round over — start a new practice round';
+        : this.game.mode === 'archive'
+          ? 'Done — pick another day from the archive'
+          : 'Round over — start a new practice round';
     this.renderStatus();
     this.renderKnowledge(false);
     this.renderBoard(false);
     this.renderHints();
   }
 
+  private renderArchive() {
+    if (this.daily.day !== dayIndex()) this.loadDaily();
+    const history = this.store.history();
+    const today = this.daily.day;
+    let played = 0;
+    let won = 0;
+    const rows: string[] = [];
+    for (let day = today; day >= 0; day--) {
+      const s = history[day];
+      const done = s && s.status !== 'playing';
+      if (done) played++;
+      if (s?.status === 'won') won++;
+      const n = s?.guessIds.length ?? 0;
+      const card = done ? pickDaily(this.cards, day) : null;
+      const chip = !s || (!n && s.status === 'playing')
+        ? `<span class="chip none">Not played</span>`
+        : s.status === 'won'
+          ? `<span class="chip hit">✓ ${n}/${MAX_GUESSES}</span>`
+          : s.status === 'lost'
+            ? `<span class="chip miss">✕ X/${MAX_GUESSES}</span>`
+            : `<span class="chip near">In progress · ${n}/${MAX_GUESSES}</span>`;
+      const tags = [day === today ? '<span class="tag today">Today</span>' : '', s?.archive ? '<span class="tag">Replay</span>' : '', s?.hints?.length ? `<span class="tag">${s.hints.length} hint${s.hints.length > 1 ? 's' : ''}</span>` : ''].join('');
+      const action = done ? 'View' : n ? 'Continue' : 'Play';
+      rows.push(`<li><button type="button" class="arow" data-day="${day}" aria-label="Daily #${day + 1}, ${esc(dateFmt.format(dayDate(day)))}: ${done ? `${s.status}, ${esc(card!.name)}` : action}">
+        <span class="anum"><b>#${day + 1}</b><small>${esc(dateFmt.format(dayDate(day)))}</small></span>
+        <span class="acard">${card ? `${artHtml(card)}<span>${esc(card.name)}<small>${esc(card.type)} · ${dot(card.domain)} ${esc(card.domain)}</small></span>` : `<i class="qmark" aria-hidden="true">?</i><span class="mute">Mystery card</span>`}</span>
+        <span class="astat">${tags}${chip}</span>
+        <span class="ago" aria-hidden="true">${action} →</span>
+      </button></li>`);
+    }
+    const total = today + 1;
+    $(this.root, '#archive').innerHTML = `
+      <div class="ahead">
+        <div><h2 id="archive-h">Archive</h2><p class="sub">Every daily card since #1. Answers stay hidden until you finish a day. Replays don't affect your streak.</p></div>
+        <div class="asum"><div><b>${played}</b><span>of ${total} played</span></div><div><b>${played ? Math.round((won / played) * 100) : 0}%</b><span>Win rate</span></div></div>
+      </div>
+      <ol class="alist">${rows.join('')}</ol>`;
+  }
+
   private renderStatus() {
     const g = this.game;
     const n = g.guesses.length;
     const left = MAX_GUESSES - n;
-    const label = g.mode === 'daily' ? `Daily ${this.gameLabel()}` : `Practice${this.settings.practiceSet ? ` · ${esc(this.settings.practiceSet)}` : ''}`;
+    const label =
+      g.mode === 'daily'
+        ? `Daily ${this.gameLabel()}`
+        : g.mode === 'archive'
+          ? `Archive ${this.gameLabel()} · ${esc(dateFmt.format(dayDate(g.day)))}`
+          : `Practice${this.settings.practiceSet ? ` · ${esc(this.settings.practiceSet)}` : ''}`;
     let title = `${left} ${left === 1 ? 'guess' : 'guesses'} left`;
     let extra = '';
     if (g.status === 'won') title = `Solved in ${n}!`;
@@ -432,6 +524,7 @@ export class App {
       extra = `<button type="button" class="link" data-action="result">View result</button>`;
       if (g.mode === 'practice') extra += `<button type="button" class="link" data-action="practice">New round</button>`;
     }
+    if (g.mode === 'archive') extra += `<button type="button" class="link" data-mode="archive">← Archive</button>`;
     const pipCls = g.status === 'won' ? 'won' : left <= 1 && g.status === 'playing' ? 'danger' : left <= 3 && g.status === 'playing' ? 'warn' : '';
     const pips = Array.from({ length: MAX_GUESSES }, (_, i) =>
       `<i class="pip${i < n ? ' used' : i === n && g.status === 'playing' ? ' next' : ''}"></i>`,
@@ -570,7 +663,7 @@ export class App {
     const stats = this.store.stats;
     const time = g.startedAt && g.finishedAt ? formatTime(g.finishedAt - g.startedAt) : '—';
     const label = this.gameLabel(g);
-    const text = shareText({ label, rows: g.clues, won, hints: g.hints.length });
+    const text = shareText({ label: g.mode === 'archive' ? `${label} (archive)` : label, rows: g.clues, won, hints: g.hints.length });
     const grid = text.split('\n').slice(1).join('\n');
     const confetti =
       won && !this.reduced
@@ -580,12 +673,13 @@ export class App {
           }).join('')}</div>`
         : '';
     const daily = g.mode === 'daily';
+    const past = g.mode === 'archive';
     const dlg = this.showDialog(`
       ${confetti}
       <div class="end${won ? '' : ' lost'}">
         ${t.image ? `<img class="cardimg" src="${esc(t.image)}" alt="${esc(t.name)}">` : ''}
         <div>
-          <div class="badge${won ? '' : ' lost'}">${won ? '✦ Solved' : '◈ Out of guesses'} · ${daily ? `Daily ${label}` : 'Practice'}</div>
+          <div class="badge${won ? '' : ' lost'}">${won ? '✦ Solved' : '◈ Out of guesses'} · ${daily ? `Daily ${label}` : past ? `Archive ${label}` : 'Practice'}</div>
           <h3 id="dlg-title">${esc(t.name)}</h3>
           <div style="color:var(--muted)">${esc(t.type)} · ${dot(t.domain)} ${esc(t.domain)} · ${esc(t.set)}</div>
           <div class="stats">
@@ -597,7 +691,7 @@ export class App {
           <pre class="share" aria-label="Share grid">${esc(grid)}</pre>
           <div class="actions">
             <button type="button" class="btn" id="share">Share result</button>
-            <button type="button" class="btn ghost" data-action="practice">${daily ? 'Play practice' : 'New practice round'}</button>
+            ${past ? '<button type="button" class="btn ghost" data-mode="archive">Back to archive</button>' : `<button type="button" class="btn ghost" data-action="practice">${daily ? 'Play practice' : 'New practice round'}</button>`}
           </div>
           ${daily ? this.distHtml(won ? g.guesses.length : null) : ''}
           <div class="countdown" id="cd"></div>

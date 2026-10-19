@@ -4,6 +4,7 @@ A daily Wordle/Loldle-style game for the **Riftbound TCG**. Guess the mystery ca
 
 - **Daily**: one card per day, the same for everyone (resets at 00:00 UTC). Progress, streaks and stats are saved in `localStorage`.
 - **Practice**: unlimited rounds, with an optional set filter. Practice doesn't affect your streak.
+- **Archive**: every past daily, with your result for each one. Answers stay hidden until you finish that day, and you can play any daily you missed (replays don't affect your streak). History is stored per day in `localStorage` (`rbg.history`).
 - Clue tiles use colour, an icon (✓ / ±1 / ✕) and text, plus ↑/↓ for numbers. Numbers within ±1 count as "close".
 - A "What you know" bar summarises solved values, ruled-out options and number ranges.
 - Three progressive hints unlock after guesses 3, 6 and 8 (domain → first letter → blurred art). Hard mode turns them off.
