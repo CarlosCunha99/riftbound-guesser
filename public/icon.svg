@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d2028"/>
+      <stop offset="1" stop-color="#0c0d11"/>
+    </linearGradient>
+    <linearGradient id="fl" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#e86a00"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff9a2e" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+    </radialGradient>
+    <path id="blade" d="M32 6c11.5 0 21.6 7.4 25.2 18.3c.3.9-.8 1.5-1.4.8C51.4 19.6 44.4 16.4 37 16.4c-6.6 0-12.6 2.6-16.9 6.9c-.6.6-1.6 0-1.3-.8C21.1 13.1 26 6 32 6z"/>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <circle cx="32" cy="32" r="20" fill="url(#glow)"/>
+  <g fill="url(#fl)">
+    <use href="#blade"/>
+    <use href="#blade" transform="rotate(120 32 32)"/>
+    <use href="#blade" transform="rotate(240 32 32)"/>
+  </g>
+  <text x="32" y="40.5" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="23" font-weight="800" fill="#fff4e6">?</text>
+</svg>

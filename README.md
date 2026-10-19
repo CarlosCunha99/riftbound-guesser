@@ -1,4 +1,4 @@
-# Riftbound Guesser
+# RiftGuessr
 
 A daily Wordle/Loldle-style game for the **Riftbound TCG**. Guess the mystery card in 10 tries using attribute clues: type, domain, cost, power, might and set.
 
@@ -72,4 +72,4 @@ Import the GitHub repo in the host's dashboard and use the settings above. Each 
 
 ## Disclaimer
 
-Riftbound Guesser is an **unofficial fan project**. It is not affiliated with, endorsed, sponsored or approved by Riot Games. Riftbound, card names and card art are trademarks or copyrights of Riot Games, Inc. Card images are loaded from Riot's public CDN.
+RiftGuessr is an **unofficial fan project**. It is not affiliated with, endorsed, sponsored or approved by Riot Games. Riftbound, card names and card art are trademarks or copyrights of Riot Games, Inc. Card images are loaded from Riot's public CDN.

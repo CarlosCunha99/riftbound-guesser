@@ -10,5 +10,5 @@ export function shareGrid(rows: Clue[][]): string {
 export function shareText(opts: { label: string; rows: Clue[][]; won: boolean; hints: number }): string {
   const score = opts.won ? `${opts.rows.length}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
   const hints = opts.hints ? ` · ${opts.hints} hint${opts.hints > 1 ? 's' : ''}` : '';
-  return `Riftbound Guesser ${opts.label} ${score}${hints}\n${shareGrid(opts.rows)}`;
+  return `RiftGuessr ${opts.label} ${score}${hints}\n${shareGrid(opts.rows)}`;
 }

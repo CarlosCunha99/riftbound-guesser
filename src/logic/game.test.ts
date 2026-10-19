@@ -92,10 +92,10 @@ describe('share', () => {
     const answer = card({});
     const rows = [compareCards(card({ cost: 5, set: 'Radiance' }), answer), compareCards(answer, answer)];
     expect(shareText({ label: '#3', rows, won: true, hints: 1 })).toBe(
-      'Riftbound Guesser #3 2/10 · 1 hint\n🟩🟩🟨🟩🟩⬛\n🟩🟩🟩🟩🟩🟩',
+      'RiftGuessr #3 2/10 · 1 hint\n🟩🟩🟨🟩🟩⬛\n🟩🟩🟩🟩🟩🟩',
     );
     expect(shareText({ label: 'Practice', rows: rows.slice(0, 1), won: false, hints: 0 }).split('\n')[0]).toBe(
-      'Riftbound Guesser Practice X/10',
+      'RiftGuessr Practice X/10',
     );
   });
 });

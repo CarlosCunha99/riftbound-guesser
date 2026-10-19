@@ -21,7 +21,7 @@ img { display: block; }
 /* ===== Top bar ===== */
 .nav { display: flex; align-items: center; justify-content: space-between; height: 60px; border-bottom: 1px solid var(--line); padding: 0 20px; position: sticky; top: 0; background: var(--bg); z-index: 20; }
 .logo { font-weight: 700; letter-spacing: 0.02em; display: flex; gap: 8px; align-items: center; white-space: nowrap; }
-.logo b { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #7d5f2a); display: inline-block; }
+.logo img { width: 24px; height: 24px; display: block; }
 .seg { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
 .seg button { all: unset; padding: 5px 14px; border-radius: 999px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .seg button:focus-visible { outline: 2px solid var(--accent); }

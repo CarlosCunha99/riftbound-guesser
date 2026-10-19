@@ -157,7 +157,7 @@ export class App {
     ).join('');
     this.root.innerHTML = `
 <header class="nav">
-  <div class="logo"><b aria-hidden="true"></b><span>Riftbound Guesser</span></div>
+  <div class="logo"><img src="./icon.svg" alt="" width="24" height="24" /><span>RiftGuessr</span></div>
   <div class="seg" role="group" aria-label="Game mode">
     <button type="button" data-mode="daily">Daily <span class="num">#${dailyNumber()}</span></button>
     <button type="button" data-mode="practice">Practice</button>
@@ -685,7 +685,7 @@ export class App {
       </ol>
       <p class="sub" style="margin-top:18px"><b style="color:var(--text)">Daily</b>: one card per day, the same for everyone (resets at 00:00 UTC). <b style="color:var(--text)">Practice</b>: unlimited rounds, optionally filtered by set in Settings.</p>
       <div class="actions"><button type="button" class="btn" data-action="close">Let’s play</button></div>
-      <div class="about">Riftbound Guesser is an unofficial fan project. It is not affiliated with, endorsed or sponsored by Riot Games. Riftbound, card names and card art are trademarks or copyrights of Riot Games, Inc. Card data comes from the <a href="https://huggingface.co/datasets/Wysme/riftbound-cards" target="_blank" rel="noopener">Wysme/riftbound-cards</a> dataset.</div>`,
+      <div class="about">RiftGuessr is an unofficial fan project. It is not affiliated with, endorsed or sponsored by Riot Games. Riftbound, card names and card art are trademarks or copyrights of Riot Games, Inc. Card data comes from the <a href="https://huggingface.co/datasets/Wysme/riftbound-cards" target="_blank" rel="noopener">Wysme/riftbound-cards</a> dataset.</div>`,
       () => {
         if (this.game.status === 'playing' && matchMedia('(min-width: 768px)').matches) setTimeout(() => this.input.focus(), 0);
       });
