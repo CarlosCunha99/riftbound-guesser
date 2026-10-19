@@ -11,6 +11,11 @@ export interface Card {
   setCode: string;
   rarity: string | null;
   image: string | null;
+  /** Type labels beyond the main type, for example Champion or Signature. */
+  labels?: string[];
+  tags?: string[];
+  ability?: string | null;
+  artist?: string | null;
 }
 
 export type ClueStatus = 'hit' | 'near' | 'miss';

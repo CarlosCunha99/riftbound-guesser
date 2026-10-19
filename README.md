@@ -7,7 +7,10 @@ A daily Wordle/Loldle-style game for the **Riftbound TCG**. Guess the mystery ca
 - **Archive**: every past daily, with your result for each one. Answers stay hidden until you finish that day, and you can play any daily you missed (replays don't affect your streak). History is stored per day in `localStorage` (`rbg.history`).
 - Clue tiles use colour, an icon (✓ / ±1 / ✕) and text, plus ↑/↓ for numbers. Numbers within ±1 count as "close".
 - A "What you know" bar shows only the attributes a guess matched exactly (X/6 solved).
-- Three progressive hints unlock after guesses 3, 6 and 8 (domain → first letter → blurred art). Hard mode turns them off.
+- Three progressive hints unlock after guesses 3, 6 and 8. They only reveal information the board never shows:
+  **Traits** (rarity, extra labels like Champion/Signature, and tags, minus any that match the card's own name) →
+  **Ability** (rules text with the card's name redacted as ▇▇▇) → **Art** (heavily blurred art plus the artist).
+  If a card lacks the data for a hint, the next hint type is used instead, so no hint is ever empty. Hard mode turns hints off.
 - The result screen has a Wordle-style share grid, guess distribution and a countdown to the next daily.
 - Works from the keyboard: `/` focuses search, `↑`/`↓` move through results, `↵` guesses and `H` uses a hint. It also respects `prefers-reduced-motion` and has a high-contrast setting.
 
@@ -54,6 +57,7 @@ The script applies the game's data rules:
 - Might is N/A (`null`, shown as "—") for Spell and Gear cards.
 - Cards with the Champion label get the type "Champion".
 - Names that exist in several sets get a "— Set" suffix.
+- Hint-only fields are kept too: `rarity`, `labels` (type labels beyond the main type), `tags`, `ability` (`ability_effective`, falling back to `ability_original`), `artist` and `image`.
 
 The **Refresh card data** GitHub Actions workflow (`.github/workflows/refresh-cards.yml`) runs the script every Monday at 06:00 UTC, and you can also start it manually from the Actions tab. It commits `public/data/cards.json` when the data changes.
 

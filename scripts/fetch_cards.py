@@ -10,6 +10,8 @@ Rules (kept from the original prototype):
   * exclude Runes
   * Might is N/A (null) for Spell and Gear cards
   * type is "Champion" when the card carries the Champion label
+  * hint-only fields: extra type labels, tags, ability text (ability_effective, else
+    ability_original) and artist
 """
 
 from __future__ import annotations
@@ -98,6 +100,10 @@ def normalize(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
                 "setCode": SET_CODES.get(card_set, (card.get("set_code") or "?").upper()),
                 "rarity": card.get("rarity"),
                 "image": card.get("image_url"),
+                "labels": [label for label in labels if label != card.get("card_type")],
+                "tags": parse_list(card.get("tags")),
+                "ability": (card.get("ability_effective") or card.get("ability_original") or "").strip() or None,
+                "artist": card.get("artist") or None,
             }
         )
 

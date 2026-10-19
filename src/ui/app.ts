@@ -2,6 +2,7 @@ import { ATTRS, MAX_GUESSES, type Card, type Clue } from '../types';
 import { compareCards, isSolved } from '../logic/compare';
 import { dailyNumber, dayDate, dayIndex, formatCountdown, msUntilNextDaily, pickDaily } from '../logic/daily';
 import { buildKnowledge, type Knowledge } from '../logic/knowledge';
+import { hintLadder, redactAbility, REDACTED, traits, type HintKind } from '../logic/hints';
 import { findExact, searchCards, type SearchResult } from '../logic/search';
 import { shareText } from '../logic/share';
 import { recordDaily, Storage, type Settings } from '../logic/storage';
@@ -24,11 +25,25 @@ interface Game {
   status: 'playing' | 'won' | 'lost';
 }
 
-const HINTS: { after: number; title: string; reveal: (c: Card) => string }[] = [
-  { after: 3, title: 'Reveal the domain', reveal: (c) => `${dot(c.domain)} Domain: ${esc(c.domain)}` },
-  { after: 6, title: 'First letter of name', reveal: (c) => `Starts with “${esc(c.title.charAt(0).toUpperCase())}”` },
-  { after: 8, title: 'Blurred card art', reveal: (c) => `Blurred art${c.image ? `<img class="blur" src="${esc(c.image)}" alt="Blurred card art">` : ''}` },
-];
+const HINT_ICON: Record<HintKind, string> = { traits: '🏷️', ability: '📜', art: '🖼️', letter: '🔤' };
+
+/** Renders a revealed hint. Only shows information the board never shows. */
+function hintBody(kind: HintKind, c: Card): string {
+  switch (kind) {
+    case 'traits':
+      return `<span class="chips">${traits(c).map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</span>`;
+    case 'ability': {
+      const html = esc(redactAbility(c))
+        .replace(/\[([^\]\n]{1,24})\]/g, (_, k: string) => `<span class="kw${k.length <= 2 ? ' sym' : ''}">${k}</span>`)
+        .replace(/\n/g, '<br>');
+      return `<blockquote class="ability">${html}</blockquote>`;
+    }
+    case 'art':
+      return `<span class="hint-art"><img src="${esc(c.image)}" alt="Heavily blurred card art"></span>${c.artist ? `<small class="artist">Illustrated by ${esc(c.artist)}</small>` : ''}`;
+    case 'letter':
+      return `Starts with “${esc(c.title.charAt(0).toUpperCase())}”`;
+  }
+}
 
 const $ = <T extends Element = HTMLElement>(root: ParentNode, sel: string) => root.querySelector(sel) as T;
 
@@ -430,7 +445,7 @@ export class App {
   private readyHints(): number[] {
     const g = this.game;
     if (this.settings.hardMode || g.status !== 'playing') return [];
-    return HINTS.map((h, i) => (g.guesses.length >= h.after && !g.hints.includes(i) ? i : -1)).filter((i) => i >= 0);
+    return hintLadder(g.target).map((h, i) => (g.guesses.length >= h.after && !g.hints.includes(i) ? i : -1)).filter((i) => i >= 0);
   }
 
   private useHint(i: number) {
@@ -438,9 +453,10 @@ export class App {
     this.game.hints.push(i);
     this.saveDaily();
     this.renderHints();
-    const tmp = document.createElement('div');
-    tmp.innerHTML = HINTS[i].reveal(this.game.target);
-    this.announce(`Hint ${i + 1}: ${tmp.textContent}`);
+    const h = hintLadder(this.game.target)[i];
+    const text =
+      h.kind === 'art' ? `blurred card art${this.game.target.artist ? `, illustrated by ${this.game.target.artist}` : ''}` : h.kind === 'traits' ? traits(this.game.target).join(', ') : h.kind === 'ability' ? redactAbility(this.game.target).replaceAll(REDACTED, 'redacted') : `starts with ${this.game.target.title.charAt(0)}`;
+    this.announce(`Hint ${i + 1}, ${h.title}: ${text}`);
   }
 
   // ---------- rendering ----------
@@ -586,10 +602,11 @@ export class App {
     }
     el.className = 'hints';
     const ready = this.readyHints();
-    el.innerHTML = HINTS.map((h, i) => {
-      if (g.hints.includes(i)) return `<div class="hint used"><span>Hint ${i + 1} · used</span><p>${h.reveal(g.target)}</p></div>`;
+    el.innerHTML = hintLadder(g.target).map((h, i) => {
+      const name = `<span aria-hidden="true">${HINT_ICON[h.kind]}</span> ${h.title}`;
+      if (g.hints.includes(i)) return `<div class="hint used" data-kind="${h.kind}"><span>Hint ${i + 1} · ${h.title}</span><div class="hint-body">${hintBody(h.kind, g.target)}</div></div>`;
       if (ready.includes(i))
-        return `<button type="button" class="hint ready" data-hint="${i}" aria-keyshortcuts="H"><span>Hint ${i + 1} · ready</span><p>${h.title} →</p></button>`;
+        return `<button type="button" class="hint ready" data-hint="${i}" aria-keyshortcuts="H"><span>Hint ${i + 1} · ready</span><p>Reveal ${name} →</p></button>`;
       const when = g.status === 'playing' ? `after guess ${h.after}` : 'not used';
       return `<div class="hint locked"><span>Hint ${i + 1} · ${when}</span><p><span aria-hidden="true">🔒</span> ${h.title}</p></div>`;
     }).join('');
@@ -761,7 +778,7 @@ export class App {
         <li><h3>Guess any card</h3><p>Type a name and pick a card from the list. Press <kbd>/</kbd> to jump to the search, <kbd>↑</kbd> <kbd>↓</kbd> to move through results and <kbd>↵</kbd> to guess.</p></li>
         <li><h3>Read the clues</h3><p>Each attribute is compared with the mystery card. <b style="color:var(--hit)">✓ green</b> is a match, <b style="color:var(--near)">±1 amber</b> is off by one and <b style="color:var(--muted)">✕ grey</b> is no match. Arrows show whether the answer is higher ↑ or lower ↓. “—” means not applicable (for example, Might on Spells and Gear).</p>
           <div class="mini" role="table" aria-label="Example row"><div role="row" style="display:contents">${exampleRow}</div></div></li>
-        <li><h3>Use what you know</h3><p>The summary bar shows every attribute one of your guesses matched exactly. Stuck? Hints unlock after guesses 3, 6 and 8. Press <kbd>H</kbd> to use one.</p>${chips}</li>
+        <li><h3>Use what you know</h3><p>The summary bar shows every attribute one of your guesses matched exactly. Stuck? Hints unlock after guesses 3, 6 and 8 and only reveal things the board never shows: <b>Traits</b> (rarity, labels and tags), the card’s <b>Ability</b> text with its name blacked out, and its blurred <b>Art</b> with the artist. Press <kbd>H</kbd> to use one.</p>${chips}</li>
       </ol>
       <p class="sub" style="margin-top:18px"><b style="color:var(--text)">Daily</b>: one card per day, the same for everyone (resets at 00:00 UTC). <b style="color:var(--text)">Practice</b>: unlimited rounds, optionally filtered by set in Settings.</p>
       <div class="actions"><button type="button" class="btn" data-action="close">Let’s play</button></div>

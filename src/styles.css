@@ -132,7 +132,15 @@ img { display: block; }
 .hint.ready p { color: var(--accent); }
 .hint.used { border-color: var(--line-2); }
 .hint.used p { color: var(--text); font-weight: 600; }
-.hint .blur { width: 64px; height: 90px; border-radius: 6px; object-fit: cover; filter: blur(7px) saturate(1.2); margin-top: 6px; }
+.hint.used .hint-body { margin-top: 6px; font-size: 13px; color: var(--text); }
+.hint .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.hint .chip { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line-2); }
+.hint .ability { margin: 0; padding: 6px 0 6px 10px; border-left: 2px solid var(--accent); color: var(--muted); font-style: italic; line-height: 1.5; font-size: 12.5px; }
+.hint .kw { display: inline-block; font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; padding: 0 6px; margin: 1px 1px; border-radius: 4px; background: #c9a45c22; color: var(--accent); border: 1px solid #c9a45c55; line-height: 16px; }
+.hint .kw.sym { min-width: 16px; text-align: center; padding: 0 3px; background: var(--raised); color: var(--text); border-color: var(--line-2); }
+.hint-art { display: block; position: relative; overflow: hidden; width: 100%; max-width: 240px; aspect-ratio: 1.4; border-radius: 8px; background: var(--raised); }
+.hint-art img { position: absolute; left: 0; top: -6%; width: 100%; filter: blur(18px) saturate(1.2); transform: scale(1.2); transform-origin: 50% 30%; }
+.hint .artist { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
 .hint-off { color: var(--faint); font-size: 13px; margin-top: 20px; }
 
 .foot { margin-top: 36px; font-size: 11px; color: var(--faint); text-align: center; }
