@@ -69,7 +69,25 @@ The **Refresh card data** GitHub Actions workflow (`.github/workflows/refresh-ca
 | [Netlify](https://app.netlify.com/start) | `npm run build` | `dist` |
 | [Cloudflare Pages](https://pages.cloudflare.com/) | `npm run build` | `dist` |
 
-Import the GitHub repo in the host's dashboard and use the settings above. Each push to `main`, including the weekly data refresh, redeploys automatically.
+Import the GitHub repo in the host's dashboard and use the settings above.
+
+### Vercel: deploy on GitHub release
+
+This repo is set up so that **publishing a GitHub release** deploys to production on Vercel:
+
+- `vercel.json` turns off automatic deploys from `main`. Pull requests still get Vercel preview URLs.
+- `.github/workflows/deploy-release.yml` runs when a release is published (pre-releases are skipped). It runs the tests, then builds and deploys that tag with the Vercel CLI. You can also run it manually from the Actions tab.
+
+One-time setup:
+
+1. Import the repo in Vercel (framework preset **Vite**; it detects the settings above).
+2. Create a token at [vercel.com/account/tokens](https://vercel.com/account/tokens).
+3. Find your IDs: on your machine run `npx vercel link` in the repo, then open `.vercel/project.json` (it has `orgId` and `projectId`). You can also find them in the Vercel dashboard under Project → Settings → General and Account/Team → Settings.
+4. In GitHub → repo **Settings → Secrets and variables → Actions**, add `VERCEL_TOKEN`, `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
+
+To ship an update: merge to `main`, then on GitHub go to **Releases → Draft a new release**, create a tag (e.g. `v1.1.0`) and click **Publish release**.
+
+> The weekly card-data refresh commits to `main`, so new cards go live with your next release.
 
 ## Disclaimer
 
