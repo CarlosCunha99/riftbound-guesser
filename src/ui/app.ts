@@ -584,12 +584,8 @@ export class App {
       })
       .reverse()
       .join('');
-    const ghost =
-      g.status === 'playing'
-        ? `<div class="row ghostrow" aria-hidden="true"><div class="artcell"><div class="art"></div></div>${'<div class="cell"></div>'.repeat(6)}</div>`
-        : '';
     const empty = g.guesses.length ? '' : '<p class="empty-board">Your guesses will appear here.</p>';
-    $(this.root, '#rows').innerHTML = ghost + rows + empty;
+    $(this.root, '#rows').innerHTML = rows + empty;
   }
 
   private renderHints() {

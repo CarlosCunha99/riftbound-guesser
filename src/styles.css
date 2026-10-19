@@ -111,10 +111,6 @@ img { display: block; }
 .row.reveal .cell { animation: flip 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: var(--d, 0s); }
 @keyframes flip { from { transform: rotateX(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-.ghostrow { opacity: 0.5; }
-.ghostrow .cell, .ghostrow .art { background: transparent; border: 1px dashed var(--line); min-height: 28px; height: 28px; cursor: default; grid-row: 1; }
-.ghostrow .art { grid-row: 1; align-self: stretch; width: var(--thumb-w); height: 28px; }
-.ghostrow .artcell { grid-row: 1; }
 .empty-board { color: var(--faint); font-size: 13px; padding: 4px 0 8px; }
 
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 14px; }
