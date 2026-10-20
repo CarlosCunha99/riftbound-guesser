@@ -6,10 +6,33 @@ import { hintLadder, redactAbility, REDACTED, traits, type HintKind } from '../l
 import { findExact, searchCards, type SearchResult } from '../logic/search';
 import { shareText } from '../logic/share';
 import { recordDaily, Storage, type Settings } from '../logic/storage';
+import { dailyStanding, fillDistribution, formatAverage, MIN_WINS, pendingResults, scoreOf, validateNickname } from '../logic/ranking';
+import {
+  dailyDistribution,
+  getAccount,
+  initOnline,
+  leaderboard,
+  myStanding,
+  OnlineError,
+  onlineConfigured,
+  setNickname,
+  signInWith,
+  signOut,
+  submitResult,
+  type Account,
+  type LeaderRow,
+  type Period,
+  type Provider,
+  type Standing,
+} from '../net/online';
 import { artHtml, cellHtml, clueLabel, dot, esc, formatTime, show } from './render';
 
 type Mode = 'daily' | 'practice' | 'archive';
-type Tab = Mode;
+type Page = 'play' | 'archive' | 'leaderboard';
+type Tab = Mode | 'leaderboard';
+
+const LB_HASH = '#/leaderboard';
+const LB_LIMIT = 50;
 
 const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
@@ -61,8 +84,11 @@ export class App {
   private practice: Game | null = null;
   /** A past daily opened from the archive. */
   private past: Game | null = null;
-  /** True while the archive list is shown instead of the board. */
-  private listing = false;
+  /** Which page is shown: the board, the archive list or the leaderboard. */
+  private page: Page = 'play';
+  private lbPeriod: Period = 'all';
+  private lbToken = 0;
+  private syncing: Promise<void> | null = null;
   private game!: Game;
   private results: SearchResult[] = [];
   private active = -1;
@@ -89,13 +115,31 @@ export class App {
     this.renderShell();
     this.bind();
     this.renderAll();
-    if (!store.seenHelp) {
+    if (location.hash === LB_HASH) {
+      this.showLeaderboard(false);
+    } else if (!store.seenHelp) {
       store.markHelpSeen();
       this.openHelp();
     } else if (this.game.status !== 'playing') {
       this.openResult();
     } else if (matchMedia('(min-width: 768px)').matches) {
       this.input.focus();
+    }
+    window.addEventListener('hashchange', () => {
+      if (location.hash === LB_HASH) {
+        if (this.page !== 'leaderboard') this.showLeaderboard(false);
+      } else if (this.page === 'leaderboard') this.setMode(this.game.mode, false);
+    });
+    if (onlineConfigured) {
+      window.addEventListener('online', () => void this.syncResults().catch(() => {}));
+      initOnline()
+        .then(({ returnToLeaderboard, authError }) => {
+          if (authError) this.toast(`Sign-in failed: ${authError}`);
+          if (returnToLeaderboard && this.page !== 'leaderboard') this.showLeaderboard(true);
+          else if (this.page === 'leaderboard') this.renderLeaderboard();
+          return this.syncResults();
+        })
+        .catch((e) => console.warn('Leaderboard unavailable:', e));
     }
   }
 
@@ -161,20 +205,33 @@ export class App {
   }
 
   private get tab(): Tab {
-    return this.listing ? 'archive' : this.game.mode;
+    return this.page === 'play' ? this.game.mode : this.page;
   }
 
-  private setMode(mode: Mode) {
+  /** Leaves the leaderboard URL without triggering hashchange. */
+  private clearLbHash() {
+    if (location.hash === LB_HASH) history.pushState(history.state, '', `${location.pathname}${location.search}`);
+  }
+
+  private showLeaderboard(push: boolean) {
     this.closeDialog();
-    this.listing = false;
+    if (push && location.hash !== LB_HASH) history.pushState(history.state, '', LB_HASH);
+    this.page = 'leaderboard';
+    this.clearSearch();
+    this.renderAll();
+    window.scrollTo({ top: 0 });
+  }
+
+  private setMode(mode: Mode, updateUrl = true) {
+    this.closeDialog();
+    if (updateUrl) this.clearLbHash();
+    this.page = mode === 'archive' ? 'archive' : 'play';
     if (mode === 'daily') {
       if (this.daily.day !== dayIndex()) this.loadDaily();
       this.game = this.daily;
     } else if (mode === 'practice') {
       if (!this.practice || this.practice.status !== 'playing') this.newPractice();
       this.game = this.practice!;
-    } else {
-      this.listing = true;
     }
     this.clearSearch();
     this.knowledge = [];
@@ -184,8 +241,9 @@ export class App {
   private openDay(day: number) {
     if (this.daily.day !== dayIndex()) this.loadDaily();
     if (day === this.daily.day) return this.setMode('daily');
+    this.clearLbHash();
     this.past = this.loadDay(day, 'archive');
-    this.listing = false;
+    this.page = 'play';
     this.game = this.past;
     this.clearSearch();
     this.knowledge = [];
@@ -197,7 +255,8 @@ export class App {
 
   private startPractice() {
     this.newPractice();
-    this.listing = false;
+    this.clearLbHash();
+    this.page = 'play';
     this.game = this.practice!;
     this.closeDialog();
     this.clearSearch();
@@ -224,6 +283,7 @@ export class App {
     <button type="button" data-mode="archive">Archive</button>
   </div>
   <div class="icons">
+    <button type="button" class="ib" data-open="leaderboard" aria-label="Leaderboard" title="Leaderboard">🏆</button>
     <button type="button" class="ib" data-open="stats" aria-label="Statistics" title="Stats">▥</button>
     <button type="button" class="ib" data-open="help" aria-label="How to play" title="How to play">?</button>
     <button type="button" class="ib" data-open="settings" aria-label="Settings" title="Settings">⚙</button>
@@ -231,6 +291,7 @@ export class App {
 </header>
 <main class="app">
   <section class="archive" id="archive" aria-labelledby="archive-h" hidden></section>
+  <section class="lb-page" id="leaderboard" aria-labelledby="lb-h" hidden></section>
   <div id="play">
   <section class="status" id="status" aria-label="Game status"></section>
   <div class="search-dock">
@@ -315,10 +376,29 @@ export class App {
       if (t.closest('[data-action="practice"]')) return this.startPractice();
       const day = t.closest<HTMLElement>('[data-day]');
       if (day) return this.openDay(Number(day.dataset.day));
+      const period = t.closest<HTMLElement>('[data-period]');
+      if (period) {
+        this.lbPeriod = period.dataset.period as Period;
+        return this.renderLeaderboard();
+      }
+      if (t.closest('[data-action="lb-retry"]')) return this.renderLeaderboard();
+      const provider = t.closest<HTMLButtonElement>('[data-provider]');
+      if (provider) return this.signIn(provider);
+      if (t.closest('[data-action="signout"]')) return this.doSignOut();
+      if (t.closest('[data-action="skip-join"]')) {
+        this.store.skipJoin();
+        t.closest('#join')?.remove();
+      }
+    });
+    this.root.addEventListener('submit', (e) => {
+      const form = (e.target as HTMLElement).closest<HTMLFormElement>('form.nick');
+      if (!form) return;
+      e.preventDefault();
+      void this.submitNick(form);
     });
 
     document.addEventListener('keydown', (e) => {
-      if ($<HTMLDialogElement>(this.root, '#dlg').open || this.listing || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ($<HTMLDialogElement>(this.root, '#dlg').open || this.page !== 'play' || e.ctrlKey || e.metaKey || e.altKey) return;
       const typing = (e.target as HTMLElement).matches?.('input, textarea, select');
       if (e.key === '/' && !typing) {
         e.preventDefault();
@@ -426,6 +506,7 @@ export class App {
       if (g.mode === 'daily') this.store.stats = recordDaily(this.store.stats, g.day, g.status === 'won', g.guesses.length);
     }
     this.saveDaily(g);
+    if (ended && g.mode === 'daily') void this.syncResults().catch(() => {});
 
     this.clearSearch();
     const left = MAX_GUESSES - g.guesses.length;
@@ -473,9 +554,12 @@ export class App {
     });
     const num = this.root.querySelector('.seg .num');
     if (num) num.textContent = `#${this.daily.day + 1}`;
-    $(this.root, '#play').hidden = this.listing;
-    $(this.root, '#archive').hidden = !this.listing;
-    if (this.listing) return this.renderArchive();
+    this.root.querySelector('[data-open="leaderboard"]')?.classList.toggle('on', tab === 'leaderboard');
+    $(this.root, '#play').hidden = this.page !== 'play';
+    $(this.root, '#archive').hidden = this.page !== 'archive';
+    $(this.root, '#leaderboard').hidden = this.page !== 'leaderboard';
+    if (this.page === 'archive') return this.renderArchive();
+    if (this.page === 'leaderboard') return void this.renderLeaderboard();
     const playing = this.game.status === 'playing';
     this.input.disabled = !playing;
     ($(this.root, '#submit') as HTMLButtonElement).disabled = !playing;
@@ -531,6 +615,249 @@ export class App {
         <div class="asum"><div><b>${played}</b><span>of ${total} played</span></div><div><b>${played ? Math.round((won / played) * 100) : 0}%</b><span>Win rate</span></div></div>
       </div>
       <ol class="alist">${rows.join('')}</ol>`;
+  }
+
+  // ---------- leaderboard ----------
+  /** Sends finished Daily results that the server hasn't seen yet. Network failures stay queued. */
+  private syncResults(): Promise<void> {
+    if (!onlineConfigured) return Promise.resolve();
+    if (this.syncing) return this.syncing;
+    const run = (async () => {
+      for (const r of pendingResults(this.store.history(), this.store.sent, dayIndex())) {
+        try {
+          await submitResult(r);
+          this.store.markSent(r.day, 'ok');
+        } catch (e) {
+          if (e instanceof OnlineError && e.kind === 'rejected') this.store.markSent(r.day, 'rejected');
+          else throw e;
+        }
+      }
+    })();
+    this.syncing = run.finally(() => {
+      if (this.syncing === tracked) this.syncing = null;
+    });
+    const tracked = this.syncing;
+    return tracked;
+  }
+
+  private lbHead(withTabs: boolean) {
+    const tab = (p: Period, label: string) =>
+      `<button type="button" data-period="${p}" class="${this.lbPeriod === p ? 'on' : ''}" aria-pressed="${this.lbPeriod === p}">${label}</button>`;
+    return `<div class="ahead">
+      <div><h2 id="lb-h">Leaderboard</h2><p class="sub">Daily players ranked by average guesses. Lower is better.</p></div>
+      ${withTabs ? `<div class="seg" role="group" aria-label="Period">${tab('all', 'All time')}${tab('30d', 'Last 30 days')}</div>` : ''}
+    </div>`;
+  }
+
+  private lbHow() {
+    return `<details class="how">
+      <summary>How ranking works</summary>
+      <ul>
+        <li>Only <b>Daily</b> games count. Practice rounds and archive replays are never submitted.</li>
+        <li>Your score is the <b>average number of guesses</b> across your Dailies. A lost game counts as <b>11</b>. Lower is better.</li>
+        <li>You need a nickname and at least <b>${MIN_WINS} Daily wins</b> in the period to be ranked, so one lucky game can't top the board.</li>
+        <li>Ties go to the player with more wins. "Better than X%" is the share of other ranked players with a worse average.</li>
+        <li>Each Daily result is submitted once, when you finish, and can't be changed.</li>
+      </ul>
+    </details>`;
+  }
+
+  private nickForm(where: 'lb' | 'result', current = '') {
+    return `<form class="nick" data-where="${where}" novalidate>
+      <label class="sr-only" for="nick-${where}">Nickname</label>
+      <input id="nick-${where}" name="nick" type="text" maxlength="16" minlength="3" autocomplete="nickname" spellcheck="false"
+        placeholder="Pick a nickname" value="${esc(current)}" required>
+      <button type="submit" class="btn">${current ? 'Save' : 'Join'}</button>
+      <p class="err" role="alert"></p>
+    </form>`;
+  }
+
+  private async renderLeaderboard() {
+    const el = $(this.root, '#leaderboard');
+    const token = ++this.lbToken;
+    if (!onlineConfigured) {
+      el.innerHTML = `${this.lbHead(false)}
+        <div class="lb-note"><b>Leaderboard not configured</b>
+        <p>This build isn't connected to the leaderboard server (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing). The game works fully offline, and your results stay on this device.</p></div>
+        ${this.lbHow()}`;
+      return;
+    }
+    const period = this.lbPeriod;
+    const busy = el.querySelector('.lb-table, .lb-me');
+    if (busy) el.querySelector('.lb-body')?.setAttribute('aria-busy', 'true');
+    else el.innerHTML = `${this.lbHead(true)}<div class="lb-body" aria-busy="true"><p class="lb-loading">Loading leaderboard…</p></div>${this.lbHow()}`;
+    el.querySelectorAll<HTMLElement>('[data-period]').forEach((b) => {
+      b.classList.toggle('on', b.dataset.period === period);
+      b.setAttribute('aria-pressed', String(b.dataset.period === period));
+    });
+    try {
+      await this.syncResults().catch(() => {});
+      const [rows, me, account] = await Promise.all([leaderboard(period, LB_LIMIT), myStanding(period), getAccount()]);
+      if (token !== this.lbToken || this.page !== 'leaderboard') return;
+      el.innerHTML = `${this.lbHead(true)}<div class="lb-body">${this.meCard(me, account, period)}${this.lbTable(rows)}</div>${this.lbHow()}`;
+    } catch (e) {
+      if (token !== this.lbToken || this.page !== 'leaderboard') return;
+      const offline = !navigator.onLine;
+      el.innerHTML = `${this.lbHead(true)}<div class="lb-body"><div class="lb-note"><b>${offline ? "You're offline" : "Couldn't load the leaderboard"}</b>
+        <p>${offline || (e instanceof OnlineError && e.kind === 'network') ? "The leaderboard server can't be reached right now. Your Daily results are saved on this device and will be submitted later." : esc((e as Error)?.message ?? 'Unknown error')}</p>
+        <button type="button" class="btn ghost" data-action="lb-retry">Try again</button></div></div>${this.lbHow()}`;
+    }
+  }
+
+  private meCard(me: Standing | null, account: Account | null, period: Period) {
+    const pending = pendingResults(this.store.history(), this.store.sent, dayIndex()).length;
+    const queued = pending ? `<p class="lb-queued">${pending} result${pending > 1 ? 's' : ''} waiting to be submitted.</p>` : '';
+    const linked = account && !account.anonymous;
+    const prov = (p: Provider) => (p === 'github' ? 'GitHub' : 'Google');
+    const accountLine = linked
+      ? `<p class="lb-acct">Signed in${account.providers.length ? ` with ${account.providers.map(prov).join(' & ')}` : ''}. <button type="button" class="link" data-action="signout">Sign out</button></p>`
+      : `<div class="lb-acct"><span>${account ? 'Playing as a guest on this device.' : 'Not signed in.'} Sign in to keep your history:</span>
+          <button type="button" class="btn ghost sm" data-provider="github">GitHub</button>
+          <button type="button" class="btn ghost sm" data-provider="google">Google</button></div>`;
+    if (!me?.nickname) {
+      return `<div class="lb-me join">
+        <h3>Join the leaderboard</h3>
+        <p class="sub">Pick a nickname. Your finished Dailies count from then on (results already submitted count too).</p>
+        ${this.nickForm('lb')}${queued}${accountLine}
+      </div>`;
+    }
+    const scope = period === '30d' ? 'in the last 30 days' : 'all time';
+    const headline =
+      me.rank !== null
+        ? `Rank <b>#${me.rank}</b> of ${me.rankedTotal}${me.betterThan !== null ? ` · better than <b>${Math.round(me.betterThan)}%</b> of ranked players` : ''}`
+        : `Win <b>${me.winsNeeded}</b> more Dail${me.winsNeeded === 1 ? 'y' : 'ies'} to be ranked ${scope} (${me.wins}/${MIN_WINS})`;
+    return `<div class="lb-me">
+      <div class="lb-me-top">
+        <div><small>You</small><h3>${esc(me.nickname)}</h3><p>${headline}</p></div>
+        <details class="rename"><summary>Change nickname</summary>${this.nickForm('lb', me.nickname)}</details>
+      </div>
+      <div class="statgrid">
+        <div><b>${formatAverage(me.avg)}</b><span>Avg guesses</span></div>
+        <div><b>${me.wins}</b><span>Wins</span></div>
+        <div><b>${me.played}</b><span>Played</span></div>
+        <div><b>${me.winRate === null ? '—' : `${Math.round(me.winRate)}%`}</b><span>Win rate</span></div>
+      </div>
+      ${queued}${accountLine}
+    </div>`;
+  }
+
+  private lbTable(rows: LeaderRow[]) {
+    if (!rows.length) return `<div class="lb-note"><b>No ranked players yet</b><p>Win ${MIN_WINS} Dailies with a nickname set to claim the top spot.</p></div>`;
+    const row = (r: LeaderRow) => `<tr class="${r.isMe ? 'me' : ''}"${r.isMe ? ' aria-current="true"' : ''}>
+        <td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td>
+        <td class="nm">${esc(r.nickname)}${r.isMe ? ' <span class="tag">You</span>' : ''}</td>
+        <td class="av">${formatAverage(r.avg)}</td>
+        <td>${r.wins}</td>
+        <td class="wr">${Math.round(r.winRate)}%</td></tr>`;
+    const top = rows.filter((r) => r.rank <= LB_LIMIT);
+    const pinned = rows.filter((r) => r.rank > LB_LIMIT);
+    return `<table class="lb-table">
+      <caption class="sr-only">Leaderboard, ${this.lbPeriod === '30d' ? 'last 30 days' : 'all time'}</caption>
+      <thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Avg</th><th scope="col">Wins</th><th scope="col" class="wr">Win %</th></tr></thead>
+      <tbody>${top.map(row).join('')}</tbody>
+      ${pinned.length ? `<tbody class="pinned"><tr class="gap" aria-hidden="true"><td colspan="5">⋯</td></tr>${pinned.map(row).join('')}</tbody>` : ''}
+    </table>`;
+  }
+
+  private async submitNick(form: HTMLFormElement) {
+    const input = form.querySelector('input')!;
+    const err = form.querySelector('.err')!;
+    const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const check = validateNickname(input.value);
+    if (!check.ok) {
+      err.textContent = check.error;
+      input.focus();
+      return;
+    }
+    btn.disabled = true;
+    err.textContent = '';
+    try {
+      const name = await setNickname(check.value);
+      await this.syncResults().catch(() => {});
+      this.toast(`You're on the leaderboard as ${name}`);
+      this.announce(`Nickname set to ${name}`);
+      const join = form.closest('#join');
+      if (join) join.innerHTML = `<p class="ok">✓ Playing as <b>${esc(name)}</b>. <button type="button" class="link" data-open="leaderboard">See the leaderboard →</button></p>`;
+      else this.renderLeaderboard();
+    } catch (e) {
+      err.textContent =
+        e instanceof OnlineError && e.kind === 'rejected'
+          ? e.message
+          : navigator.onLine
+            ? "Couldn't save your nickname. Try again."
+            : "You're offline. Try again when you're connected.";
+      btn.disabled = false;
+    }
+  }
+
+  private async signIn(btn: HTMLButtonElement) {
+    btn.disabled = true;
+    try {
+      await signInWith(btn.dataset.provider as Provider);
+    } catch (e) {
+      btn.disabled = false;
+      this.toast(`Sign-in failed: ${(e as Error)?.message ?? 'unknown error'}`);
+    }
+  }
+
+  private async doSignOut() {
+    try {
+      await signOut();
+      this.toast('Signed out. Your games on this device are kept.');
+    } catch {
+      this.toast("Couldn't sign out");
+    }
+    this.renderLeaderboard();
+  }
+
+  /** Fills the result dialog with today's global distribution and the player's percentile. */
+  private async loadToday(dlg: HTMLElement, g: Game) {
+    const box = dlg.querySelector<HTMLElement>('#today');
+    if (!box || !onlineConfigured) return;
+    try {
+      await this.syncResults();
+    } catch {
+      /* offline: still try to show the distribution */
+    }
+    let rows;
+    try {
+      rows = await dailyDistribution(g.day);
+    } catch {
+      if (box.isConnected) box.querySelector('.today-note')!.textContent = navigator.onLine ? "Couldn't reach the leaderboard. Your result is saved and will be submitted later." : "You're offline. Your result is saved and will be submitted when you reconnect.";
+      return;
+    }
+    if (!box.isConnected) return;
+    const won = g.status === 'won';
+    const score = scoreOf({ won, guesses: g.guesses.length });
+    const dist = fillDistribution(rows);
+    if (this.store.sent[g.day] !== 'ok') dist[score - 1]++;
+    const { total, better } = dailyStanding(dist, score);
+    const n = g.guesses.length;
+    const lead = won ? `You solved it in <b>${n}</b> ${n === 1 ? 'guess' : 'guesses'}` : 'You ran out of guesses';
+    const tail = better === null ? ` — you're the first to finish today!` : `, better than <b>${better}%</b> of players today.`;
+    const max = Math.max(1, ...dist);
+    const bars = dist
+      .map((v, i) => `<div class="${i === score - 1 ? 'me' : ''}"><span>${i < MAX_GUESSES ? i + 1 : 'X'}</span><i style="width:${Math.max(6, (v / max) * 100)}%">${v}</i></div>`)
+      .join('');
+    box.innerHTML = `<p class="today-head">${lead}${tail}</p>
+      <div class="dist" aria-label="Today's results from ${total} ${total === 1 ? 'player' : 'players'}">${bars}</div>
+      <p class="today-note">${total} ${total === 1 ? 'player has' : 'players have'} finished today's Daily.</p>`;
+    this.announce(`${won ? `Solved in ${n}` : 'Out of guesses'}${better === null ? '. First to finish today.' : `, better than ${better} percent of players today.`}`);
+
+    if (this.store.joinSkipped) return;
+    try {
+      const me = await myStanding('all');
+      if (me?.nickname || !dlg.isConnected) return;
+      const join = dlg.querySelector<HTMLElement>('#join');
+      if (!join) return;
+      join.hidden = false;
+      join.innerHTML = `<h4>Join the leaderboard</h4>
+        <p class="sub">Pick a nickname to be ranked by average guesses. No sign-up needed.</p>
+        ${this.nickForm('result')}
+        <button type="button" class="link" data-action="skip-join">Not now</button>`;
+    } catch {
+      /* the join prompt is optional */
+    }
   }
 
   private renderStatus() {
@@ -631,7 +958,8 @@ export class App {
 
   // ---------- dialogs ----------
   private open(name: string) {
-    if (name === 'stats') this.openStats();
+    if (name === 'leaderboard') this.showLeaderboard(true);
+    else if (name === 'stats') this.openStats();
     else if (name === 'help') this.openHelp();
     else if (name === 'settings') this.openSettings();
   }
@@ -701,7 +1029,13 @@ export class App {
             <button type="button" class="btn" id="share">Share result</button>
             ${past ? '<button type="button" class="btn ghost" data-mode="archive">Back to archive</button>' : `<button type="button" class="btn ghost" data-action="practice">${daily ? 'Play practice' : 'New practice round'}</button>`}
           </div>
-          ${daily ? this.distHtml(won ? g.guesses.length : null) : ''}
+          ${
+            daily
+              ? onlineConfigured
+                ? `<div class="today" id="today" aria-live="polite">${this.distHtml(won ? g.guesses.length : null)}<p class="today-note">Comparing with other players…</p></div><div class="join" id="join" hidden></div>`
+                : this.distHtml(won ? g.guesses.length : null)
+              : ''
+          }
           <div class="countdown" id="cd"></div>
         </div>
       </div>`);
@@ -716,6 +1050,7 @@ export class App {
     $(dlg, '#share').addEventListener('click', () => this.share(text));
     $<HTMLButtonElement>(dlg, '#share').focus();
     this.announce(won ? `Solved! The card was ${t.name}.` : `Out of guesses. The card was ${t.name}.`);
+    if (daily) void this.loadToday(dlg, g);
   }
 
   private async share(text: string) {
@@ -782,7 +1117,7 @@ export class App {
           <div class="mini" role="table" aria-label="Example row"><div role="row" style="display:contents">${exampleRow}</div></div></li>
         <li><h3>Use what you know</h3><p>The summary bar shows every attribute one of your guesses matched exactly. Stuck? Hints unlock after guesses 3, 6 and 8 and only reveal things the board never shows: <b>Traits</b> (rarity, labels and tags), the card’s <b>Ability</b> text with its name blacked out, and its blurred <b>Art</b> with the artist. Press <kbd>H</kbd> to use one.</p>${chips}</li>
       </ol>
-      <p class="sub" style="margin-top:18px"><b style="color:var(--text)">Daily</b>: one card per day, the same for everyone (resets at 00:00 UTC). <b style="color:var(--text)">Practice</b>: unlimited rounds, optionally filtered by set in Settings.</p>
+      <p class="sub" style="margin-top:18px"><b style="color:var(--text)">Daily</b>: one card per day, the same for everyone (resets at 00:00 UTC). <b style="color:var(--text)">Practice</b>: unlimited rounds, optionally filtered by set in Settings. <b style="color:var(--text)">Leaderboard</b> (🏆): finished Dailies are ranked by average guesses (a loss counts as 11), and after each Daily you see how you compare with everyone today.</p>
       <div class="actions"><button type="button" class="btn" data-action="close">Let’s play</button></div>
       <div class="about">RiftGuessr is an unofficial fan project. It is not affiliated with, endorsed or sponsored by Riot Games. Riftbound, card names and card art are trademarks or copyrights of Riot Games, Inc. Card data comes from the <a href="https://huggingface.co/datasets/Wysme/riftbound-cards" target="_blank" rel="noopener">Wysme/riftbound-cards</a> dataset.</div>`,
       () => {

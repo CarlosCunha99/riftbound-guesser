@@ -12,6 +12,7 @@ A daily Wordle/Loldle-style game for the **Riftbound TCG**. Guess the mystery ca
   **Ability** (rules text with the card's name redacted as ▇▇▇) → **Art** (heavily blurred art plus the artist).
   If a card lacks the data for a hint, the next hint type is used instead, so no hint is ever empty. Hard mode turns hints off.
 - The result screen has a Wordle-style share grid, guess distribution and a countdown to the next daily.
+- **Leaderboard** (🏆, `#/leaderboard`): Daily players ranked by average guesses, plus "better than X% of players today" after each Daily. It's optional and backed by Supabase; see [Leaderboard](#leaderboard-supabase). Without it, the game works fully offline.
 - Works from the keyboard: `/` focuses search, `↑`/`↓` move through results, `↵` guesses and `H` uses a hint. It also respects `prefers-reduced-motion` and has a high-contrast setting.
 
 ## Tech
@@ -22,9 +23,11 @@ A static site built with [Vite](https://vitejs.dev/) and vanilla TypeScript (no 
 scripts/fetch_cards.py      # downloads + normalizes card data
 public/data/cards.json      # generated card list (committed, loaded at runtime)
 public/data/daily.json      # pinned daily schedule: day index -> card id (append-only)
-src/logic/                  # pure game logic (compare, daily seed, knowledge, search, share, storage) + tests
+src/logic/                  # pure game logic (compare, daily seed, knowledge, ranking, search, share, storage) + tests
+src/net/online.ts           # optional Supabase client (leaderboard, auth), loaded lazily
 src/ui/                     # DOM rendering and app controller
 src/styles.css              # design tokens and layout
+supabase/migrations/        # leaderboard schema, RLS and RPC functions
 ```
 
 ## Getting started
@@ -38,6 +41,8 @@ npm test           # unit tests
 npm run build      # production build in dist/
 npm run preview    # serve the production build locally
 ```
+
+To try the leaderboard locally, copy `.env.example` to `.env.local` and fill in your Supabase project's URL and anon key (see below). Without them, the leaderboard page shows a "not configured" message.
 
 ## Card data
 
@@ -95,6 +100,54 @@ One-time setup:
 To ship an update: merge to `main`, then on GitHub go to **Releases → Draft a new release**, create a tag (e.g. `v1.1.0`) and click **Publish release**.
 
 > Code changes only go live when you publish a release. Card data and the daily schedule go live every night, on top of your latest release. At least one full (non pre-release) release must exist for anything to deploy.
+
+## Leaderboard (Supabase)
+
+The leaderboard uses a free [Supabase](https://supabase.com/) project (Postgres + Auth). It's optional: if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` aren't set, or Supabase is unreachable, the game stays fully playable. Finished Daily results are queued in `localStorage` (`rbg.lb.sent` tracks what was sent) and retried on the next visit, when the browser comes back online and after the next Daily.
+
+### How ranking works
+
+- Only Daily games count. Practice rounds and Archive replays are never submitted.
+- A player's score is their **average guesses** over all their Dailies in the period, where a **loss counts as 11**. Lower is better. Ties go to more wins.
+- You need a nickname and at least **5 Daily wins** in the period to be ranked. Periods: **All time** and **Last 30 days**.
+- After each Daily, the result screen shows "better than X% of players today": the share of *other* players who finished today with a worse score, plus today's distribution chart.
+- The leaderboard page shows your rank and the share of other ranked players with a worse average.
+
+### Identity
+
+Players start as **anonymous** Supabase users (created the first time they finish a Daily or pick a nickname), so there's no sign-up. "Sign in to keep your history" links GitHub or Google to the *same* user id (`linkIdentity`), so history carries over to other devices. If that GitHub/Google account already has its own player, the app signs in to that one instead.
+
+### Setup
+
+1. Create a project at [supabase.com](https://supabase.com/dashboard) (the free tier is enough).
+2. Run the migration in `supabase/migrations/` — paste it into **SQL Editor → New query → Run**, or use the CLI: `supabase link --project-ref <ref>` then `supabase db push`.
+3. **Authentication → Sign In / Providers**:
+   - Turn on **Allow anonymous sign-ins**.
+   - Turn on **Allow manual linking** (needed for "Sign in to keep your history").
+   - Enable **GitHub** (create an OAuth app at GitHub → Settings → Developer settings) and **Google** (Google Cloud console → OAuth client). Use the callback URL that Supabase shows, `https://<ref>.supabase.co/auth/v1/callback`.
+4. **Authentication → URL Configuration**: set **Site URL** to your production domain (e.g. `https://riftguessr.vercel.app`) and add **Redirect URLs** for `https://*.vercel.app/**` (previews) and `http://127.0.0.1:5173/**` (local dev).
+5. Recommended: enable **Attack Protection → CAPTCHA** or keep the default rate limits for anonymous sign-ins.
+6. Copy **Project Settings → API → Project URL** and the **anon public** key, then set them as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`:
+   - in Vercel → Project → Settings → **Environment Variables** (Production and Preview), and redeploy (publish a release for production);
+   - locally in `.env.local` (git-ignored).
+
+The anon key is meant to be public. All writes go through `security definer` functions, and Row Level Security blocks direct inserts, updates and deletes.
+
+### Database
+
+- `profiles(id, nickname, created_at, updated_at)`: one row per player. Nicknames are 3–16 characters (letters, numbers, spaces, `-`, `_`), unique (case-insensitive) and pass a profanity filter.
+- `daily_results(user_id, day, guesses, won, hints_used, created_at)`: primary key `(user_id, day)`, so one result per player per day. Results can't be changed.
+- RPCs: `submit_daily_result`, `set_nickname`, `leaderboard(period, limit)`, `my_standing(period)`, `daily_distribution(day)`, `my_percentile(day)`.
+
+### Anti-cheat (best effort)
+
+The daily card is chosen on the client (from `daily.json`), so the server can't verify that a player really solved it, and a determined player could submit a fake result. The leaderboard is for fun, and these limits keep it reasonable:
+
+- Results are only accepted through `submit_daily_result`, which checks 1–10 guesses (a loss must use all 10), 0–3 hints, and that the day is today's UTC day (yesterday is accepted for one hour after midnight).
+- One result per player per day, and it can never be changed.
+- Ranking requires 5+ wins, so a single lucky (or fake) game can't take first place.
+- Nicknames are filtered for profanity on both client and server, and renames are rate-limited to one every 30 seconds.
+- Supabase's built-in rate limits (and optional CAPTCHA) limit how fast new anonymous accounts can be created.
 
 ## Disclaimer
 

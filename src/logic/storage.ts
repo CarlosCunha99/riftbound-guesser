@@ -1,4 +1,5 @@
 import { MAX_GUESSES } from '../types';
+import type { SentLog } from './ranking';
 
 export interface Settings {
   highContrast: boolean;
@@ -38,6 +39,8 @@ const KEYS = {
   daily: 'rbg.daily',
   history: 'rbg.history',
   seenHelp: 'rbg.seenHelp',
+  sent: 'rbg.lb.sent',
+  joinSkipped: 'rbg.lb.joinSkipped',
 };
 
 export interface KV {
@@ -122,6 +125,20 @@ export class Storage {
   }
   markHelpSeen() {
     this.write(KEYS.seenHelp, 1);
+  }
+  /** Leaderboard submissions that are done (sent or refused), keyed by day index. */
+  get sent(): SentLog {
+    return this.read<SentLog>(KEYS.sent, {});
+  }
+  markSent(day: number, outcome: 'ok' | 'rejected') {
+    this.write(KEYS.sent, { ...this.sent, [day]: outcome });
+  }
+  /** True once the player dismissed the "Join the leaderboard" prompt. */
+  get joinSkipped(): boolean {
+    return this.kv.getItem(KEYS.joinSkipped) === '1';
+  }
+  skipJoin() {
+    this.write(KEYS.joinSkipped, 1);
   }
 }
 
