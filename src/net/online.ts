@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dayDate } from '../logic/daily';
-import type { PendingResult, ScoreCount } from '../logic/ranking';
+import { usernameFromEmail, usernameToEmail, type PendingResult, type ScoreCount } from '../logic/ranking';
 
 /**
  * Optional online features (leaderboard, daily percentile). Everything here is best effort: when
@@ -11,13 +11,12 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefine
 export const onlineConfigured = !!(SUPABASE_URL && SUPABASE_KEY);
 
 export type Period = 'all' | '30d';
-export type Provider = 'github' | 'google';
 
 export interface Account {
   id: string;
   anonymous: boolean;
-  /** Linked OAuth providers, for example ["github"]. */
-  providers: Provider[];
+  /** Login name of a registered account, or null for a guest. */
+  username: string | null;
 }
 
 export interface LeaderRow {
@@ -56,7 +55,6 @@ export class OnlineError extends Error {
   }
 }
 
-const RETURN_KEY = 'rbg.lb.return';
 let clientPromise: Promise<SupabaseClient> | null = null;
 
 function client(): Promise<SupabaseClient> {
@@ -93,39 +91,20 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
 const isoDay = (day: number) => dayDate(day).toISOString().slice(0, 10);
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
-/** Starts the client so OAuth redirects complete and a stored session is restored. */
-export async function initOnline(): Promise<{ returnToLeaderboard: boolean; authError: string | null }> {
-  if (!onlineConfigured) return { returnToLeaderboard: false, authError: null };
+/** Starts the client so a stored session is restored. */
+export async function initOnline(): Promise<void> {
+  if (!onlineConfigured) return;
   const sb = await client();
   await sb.auth.getSession();
-  const url = new URL(location.href);
-  const params = new URLSearchParams([...url.searchParams, ...new URLSearchParams(url.hash.replace(/^#/, ''))]);
-  const authError = params.get('error_description');
-  if (url.searchParams.has('code') || authError) {
-    ['code', 'error', 'error_code', 'error_description', 'state'].forEach((k) => url.searchParams.delete(k));
-    if (authError) url.hash = '';
-    history.replaceState(history.state, '', url.toString());
-  }
-  const provider = sessionStorage.getItem(RETURN_KEY) as Provider | null;
-  sessionStorage.removeItem(RETURN_KEY);
-  // Linking failed because that GitHub/Google account already has its own player: sign in to it instead.
-  if (authError && provider && /already|exists|linked/i.test(`${params.get('error_code') ?? ''} ${authError}`)) {
-    sessionStorage.setItem(RETURN_KEY, provider);
-    const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: `${location.origin}${location.pathname}` } });
-    if (!error) return { returnToLeaderboard: false, authError: null };
-    sessionStorage.removeItem(RETURN_KEY);
-  }
-  return { returnToLeaderboard: !!provider, authError };
 }
-
 export async function getAccount(): Promise<Account | null> {
   if (!onlineConfigured) return null;
   const sb = await client();
   const { data } = await sb.auth.getSession();
   const user = data.session?.user;
   if (!user) return null;
-  const providers = (user.identities ?? []).map((i) => i.provider).filter((p): p is Provider => p === 'github' || p === 'google');
-  return { id: user.id, anonymous: !!user.is_anonymous, providers };
+  const anonymous = !!user.is_anonymous;
+  return { id: user.id, anonymous, username: anonymous ? null : usernameFromEmail(user.email) };
 }
 
 /** Makes sure there is a user, signing in anonymously the first time. */
@@ -189,28 +168,57 @@ export async function myStanding(period: Period): Promise<Standing | null> {
   };
 }
 
+const authError = (e: { message: string; code?: string; status?: number }, fallback: string) => {
+  const code = e.code ?? '';
+  if (/user_already_exists|email_exists|identity_already_exists/.test(code) || /already (been )?registered/i.test(e.message))
+    return new OnlineError('That username is taken', 'rejected', code);
+  if (code === 'invalid_credentials') return new OnlineError('Wrong username or password', 'rejected', code);
+  if (code === 'weak_password') return new OnlineError('Pick a stronger password (at least 8 characters)', 'rejected', code);
+  if (code === 'over_request_rate_limit' || e.status === 429) return new OnlineError('Too many attempts. Try again in a minute.', 'network', code);
+  return new OnlineError(e.message || fallback, 'network', code);
+};
+
 /**
- * Keeps the player's history across devices. A guest links the provider to the same user id. If that
- * provider account already belongs to another player, it signs in to that account instead.
+ * Turns the current guest into a registered account (same user id, so history is kept) by attaching
+ * a username and password. Needs "Confirm email" turned off in Supabase, because the email is made up.
  */
-export async function signInWith(provider: Provider): Promise<void> {
+export async function createAccount(username: string, password: string): Promise<void> {
   const sb = await client();
-  const redirectTo = `${location.origin}${location.pathname}`;
-  sessionStorage.setItem(RETURN_KEY, provider);
-  const fail = (error: { message: string; code?: string }) => {
-    sessionStorage.removeItem(RETURN_KEY);
-    return new OnlineError(error.message, 'network', error.code ?? '');
-  };
-  const { data } = await sb.auth.getSession();
-  if (data.session?.user.is_anonymous) {
-    const { error } = await sb.auth.linkIdentity({ provider, options: { redirectTo } });
-    if (!error) return;
-    if (!/already|exists/i.test(`${error.code ?? ''} ${error.message}`)) throw fail(error);
+  const { data: cur } = await sb.auth.getSession();
+  if (cur.session && !cur.session.user.is_anonymous) throw new OnlineError('You are already signed in', 'rejected');
+  const email = usernameToEmail(username);
+  let res;
+  let confirmed: boolean;
+  try {
+    if (cur.session) {
+      const r = await sb.auth.updateUser({ email, password });
+      res = r;
+      confirmed = !!r.data.user?.email;
+    } else {
+      const r = await sb.auth.signUp({ email, password });
+      res = r;
+      confirmed = !!r.data.session;
+    }
+  } catch (e) {
+    throw new OnlineError(String((e as Error)?.message ?? e), 'network');
   }
-  const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo } });
-  if (error) throw fail(error);
+  if (res.error) throw authError(res.error, "Couldn't create the account");
+  if (!confirmed) {
+    throw new OnlineError('Accounts are not enabled yet: turn off "Confirm email" in Supabase → Authentication → Sign In / Providers → Email.', 'config');
+  }
 }
 
+/** Signs in to an existing account. This replaces the current guest session. */
+export async function signInWithPassword(username: string, password: string): Promise<void> {
+  const sb = await client();
+  let res;
+  try {
+    res = await sb.auth.signInWithPassword({ email: usernameToEmail(username), password });
+  } catch (e) {
+    throw new OnlineError(String((e as Error)?.message ?? e), 'network');
+  }
+  if (res.error) throw authError(res.error, "Couldn't sign in");
+}
 export async function signOut(): Promise<void> {
   const sb = await client();
   await sb.auth.signOut();

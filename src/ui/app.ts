@@ -6,7 +6,7 @@ import { hintLadder, redactAbility, REDACTED, traits, type HintKind } from '../l
 import { findExact, searchCards, type SearchResult } from '../logic/search';
 import { shareText } from '../logic/share';
 import { recordDaily, Storage, type Settings } from '../logic/storage';
-import { dailyStanding, fillDistribution, formatAverage, MIN_WINS, pendingResults, scoreOf, validateNickname } from '../logic/ranking';
+import { dailyStanding, fillDistribution, formatAverage, MIN_WINS, pendingResults, scoreOf, validateNickname, validatePassword, validateUsername } from '../logic/ranking';
 import {
   dailyDistribution,
   getAccount,
@@ -16,13 +16,13 @@ import {
   OnlineError,
   onlineConfigured,
   setNickname,
-  signInWith,
+  createAccount,
+  signInWithPassword,
   signOut,
   submitResult,
   type Account,
   type LeaderRow,
   type Period,
-  type Provider,
   type Standing,
 } from '../net/online';
 import { artHtml, cellHtml, clueLabel, dot, esc, formatTime, show } from './render';
@@ -133,10 +133,8 @@ export class App {
     if (onlineConfigured) {
       window.addEventListener('online', () => void this.syncResults().catch(() => {}));
       initOnline()
-        .then(({ returnToLeaderboard, authError }) => {
-          if (authError) this.toast(`Sign-in failed: ${authError}`);
-          if (returnToLeaderboard && this.page !== 'leaderboard') this.showLeaderboard(true);
-          else if (this.page === 'leaderboard') this.renderLeaderboard();
+        .then(() => {
+          if (this.page === 'leaderboard') this.renderLeaderboard();
           return this.syncResults();
         })
         .catch((e) => console.warn('Leaderboard unavailable:', e));
@@ -382,8 +380,6 @@ export class App {
         return this.renderLeaderboard();
       }
       if (t.closest('[data-action="lb-retry"]')) return this.renderLeaderboard();
-      const provider = t.closest<HTMLButtonElement>('[data-provider]');
-      if (provider) return this.signIn(provider);
       if (t.closest('[data-action="signout"]')) return this.doSignOut();
       if (t.closest('[data-action="skip-join"]')) {
         this.store.skipJoin();
@@ -391,7 +387,14 @@ export class App {
       }
     });
     this.root.addEventListener('submit', (e) => {
-      const form = (e.target as HTMLElement).closest<HTMLFormElement>('form.nick');
+      const target = e.target as HTMLElement;
+      const auth = target.closest<HTMLFormElement>('form.auth');
+      if (auth) {
+        e.preventDefault();
+        void this.submitAuth(auth, (e as SubmitEvent).submitter as HTMLButtonElement | null);
+        return;
+      }
+      const form = target.closest<HTMLFormElement>('form.nick');
       if (!form) return;
       e.preventDefault();
       void this.submitNick(form);
@@ -708,12 +711,16 @@ export class App {
     const pending = pendingResults(this.store.history(), this.store.sent, dayIndex()).length;
     const queued = pending ? `<p class="lb-queued">${pending} result${pending > 1 ? 's' : ''} waiting to be submitted.</p>` : '';
     const linked = account && !account.anonymous;
-    const prov = (p: Provider) => (p === 'github' ? 'GitHub' : 'Google');
     const accountLine = linked
-      ? `<p class="lb-acct">Signed in${account.providers.length ? ` with ${account.providers.map(prov).join(' & ')}` : ''}. <button type="button" class="link" data-action="signout">Sign out</button></p>`
-      : `<div class="lb-acct"><span>${account ? 'Playing as a guest on this device.' : 'Not signed in.'} Sign in to keep your history:</span>
-          <button type="button" class="btn ghost sm" data-provider="github">GitHub</button>
-          <button type="button" class="btn ghost sm" data-provider="google">Google</button></div>`;
+      ? `<p class="lb-acct">Signed in as <b>${esc(account.username ?? 'your account')}</b>. <button type="button" class="link" data-action="signout">Sign out</button></p>`
+      : `<details class="lb-acct"><summary>${account ? 'Playing as a guest on this device.' : 'Not signed in.'} Log in or create an account to keep your history</summary>
+          <form class="auth" novalidate>
+            <input name="u" placeholder="Username" autocomplete="username" maxlength="16" autocapitalize="none" spellcheck="false" aria-label="Username" />
+            <input name="p" type="password" placeholder="Password (8+ characters)" autocomplete="current-password" aria-label="Password" />
+            <div class="auth-btns"><button type="submit" class="btn sm" value="signin">Sign in</button><button type="submit" class="btn ghost sm" value="create">Create account</button></div>
+            <p class="err" role="alert"></p>
+            <p class="sub">There is no password reset, so remember your password.</p>
+          </form></details>`;
     if (!me?.nickname) {
       return `<div class="lb-me join">
         <h3>Join the leaderboard</h3>
@@ -790,16 +797,45 @@ export class App {
     }
   }
 
-  private async signIn(btn: HTMLButtonElement) {
-    btn.disabled = true;
+  private async submitAuth(form: HTMLFormElement, submitter: HTMLButtonElement | null) {
+    const mode = submitter?.value === 'create' ? 'create' : 'signin';
+    const err = form.querySelector('.err')!;
+    const buttons = form.querySelectorAll<HTMLButtonElement>('button');
+    const user = validateUsername(form.querySelector<HTMLInputElement>('[name="u"]')!.value);
+    const pw = form.querySelector<HTMLInputElement>('[name="p"]')!.value;
+    err.textContent = '';
+    if (!user.ok) {
+      err.textContent = user.error;
+      return;
+    }
+    const pwErr = mode === 'create' ? validatePassword(pw) : pw ? null : 'Enter your password.';
+    if (pwErr) {
+      err.textContent = pwErr;
+      return;
+    }
+    buttons.forEach((b) => (b.disabled = true));
     try {
-      await signInWith(btn.dataset.provider as Provider);
+      if (mode === 'create') {
+        await createAccount(user.value, pw);
+        const me = await myStanding('all').catch(() => null);
+        if (!me?.nickname) await setNickname(user.value).catch(() => {});
+      } else {
+        await signInWithPassword(user.value, pw);
+        this.store.clearSent();
+      }
+      await this.syncResults().catch(() => {});
+      this.toast(mode === 'create' ? `Account created. Welcome, ${user.value}!` : `Signed in as ${user.value}`);
+      this.renderLeaderboard();
     } catch (e) {
-      btn.disabled = false;
-      this.toast(`Sign-in failed: ${(e as Error)?.message ?? 'unknown error'}`);
+      buttons.forEach((b) => (b.disabled = false));
+      err.textContent =
+        e instanceof OnlineError
+          ? e.message
+          : navigator.onLine
+            ? "Couldn't reach the server. Try again."
+            : "You're offline. Try again when you're connected.";
     }
   }
-
   private async doSignOut() {
     try {
       await signOut();
