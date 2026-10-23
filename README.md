@@ -116,7 +116,7 @@ The leaderboard uses a free [Supabase](https://supabase.com/) project (Postgres 
 
 ### Identity
 
-Players start as **guests** (anonymous Supabase users, created the first time they finish a Daily or pick a nickname). To keep their history on other devices they can **create an account with just a username and password**, which turns the guest into a registered user with the *same* user id. Supabase Auth needs an email, so the username is mapped to a made-up address (`<username>@riftguessr.app`); nobody is emailed, and that also means **there is no password reset**. No external providers (Google, GitHub) are used.
+Players start as **guests** (anonymous Supabase users, created the first time they finish a Daily or pick a nickname). To keep their history on other devices they can **create an account with just a username and password**, which turns the guest into a registered user with the *same* user id. Supabase Auth needs an email, so the username is mapped to a made-up address (`<username>@riftguessr.app`); nobody is emailed, and that also means **there is no password reset**. Accounts are created by the `register_account` database function (already confirmed, so Supabase never validates or mails the address); signing in uses the normal Supabase password login. No external providers (Google, GitHub) are used.
 
 ### Setup
 
@@ -124,10 +124,9 @@ Players start as **guests** (anonymous Supabase users, created the first time th
 2. Run the migration in `supabase/migrations/` — paste it into **SQL Editor → New query → Run**, or use the CLI: `supabase link --project-ref <ref>` then `supabase db push`.
 3. **Authentication → Sign In / Providers**:
    - Turn on **Allow anonymous sign-ins**.
-   - Make sure **Email** is enabled and turn **Confirm email OFF** (usernames use made-up addresses, so confirmation emails can never be answered).
-4. Optional: under **Authentication → Providers → Email**, keep the minimum password length at 8 or more.
-5. Recommended: enable **Attack Protection → CAPTCHA** or keep the default rate limits for anonymous sign-ins.
-6. Copy **Project Settings → API → Project URL** and the **anon public** key, then set them as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`:
+   - Keep the **Email** provider enabled (password sign-in uses it). "Confirm email" doesn't matter, because accounts are created already confirmed.
+4. Recommended: enable **Attack Protection → CAPTCHA** or keep the default rate limits for anonymous sign-ins.
+5. Copy **Project Settings → API → Project URL** and the **anon public** key, then set them as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`:
    - in Vercel → Project → Settings → **Environment Variables** (Production and Preview), and redeploy (publish a release for production);
    - (Vercel's Supabase integration's `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are also accepted, so no extra variables are needed if you use it);
    - locally in `.env.local` (git-ignored).
