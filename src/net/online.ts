@@ -6,8 +6,9 @@ import { usernameFromEmail, usernameToEmail, type PendingResult, type ScoreCount
  * Optional online features (leaderboard, daily percentile). Everything here is best effort: when
  * Supabase isn't configured or reachable, the game keeps working offline.
  */
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const env = import.meta.env as Record<string, string | undefined>;
+const SUPABASE_URL = env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = env.VITE_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 export const onlineConfigured = !!(SUPABASE_URL && SUPABASE_KEY);
 
 export type Period = 'all' | '30d';
