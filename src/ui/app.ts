@@ -735,7 +735,7 @@ export class App {
         : `Win <b>${me.winsNeeded}</b> more Dail${me.winsNeeded === 1 ? 'y' : 'ies'} to be ranked ${scope} (${me.wins}/${MIN_WINS})`;
     return `<div class="lb-me">
       <div class="lb-me-top">
-        <div><small>You</small><h3>${esc(me.nickname)}</h3><p>${headline}</p></div>
+        <div><small>You</small><h3>${esc(me.nickname)}${this.flame(me.streak)}</h3><p>${headline}</p></div>
         <details class="rename"><summary>Change nickname</summary>${this.nickForm('lb', me.nickname)}</details>
       </div>
       <div class="statgrid">
@@ -748,11 +748,15 @@ export class App {
     </div>`;
   }
 
+  private flame(streak: number) {
+    return streak > 0 ? ` <span class="flame" title="${streak}-day win streak" aria-label="${streak}-day win streak">🔥${streak}</span>` : '';
+  }
+
   private lbTable(rows: LeaderRow[]) {
     if (!rows.length) return `<div class="lb-note"><b>No ranked players yet</b><p>Win ${MIN_WINS} Dailies with a nickname set to claim the top spot.</p></div>`;
     const row = (r: LeaderRow) => `<tr class="${r.isMe ? 'me' : ''}"${r.isMe ? ' aria-current="true"' : ''}>
         <td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td>
-        <td class="nm">${esc(r.nickname)}${r.isMe ? ' <span class="tag">You</span>' : ''}</td>
+        <td class="nm">${esc(r.nickname)}${this.flame(r.streak)}${r.isMe ? ' <span class="tag">You</span>' : ''}</td>
         <td class="av">${formatAverage(r.avg)}</td>
         <td>${r.wins}</td>
         <td class="wr">${Math.round(r.winRate)}%</td></tr>`;

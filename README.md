@@ -111,6 +111,7 @@ The leaderboard uses a free [Supabase](https://supabase.com/) project (Postgres 
 - A player's score is their **average guesses** over all their Dailies in the period, where a **loss counts as 11**. Lower is better. Ties go to more wins.
 - You need a nickname and at least **5 Daily wins** in the period to be ranked. Periods: **All time** and **Last 30 days**.
 - After each Daily, the result screen shows "better than X% of players today": the share of *other* players who finished today with a worse score, plus today's distribution chart.
+- A 🔥 next to a nickname shows the player's current Daily win streak (consecutive wins ending today or yesterday).
 - The leaderboard page shows your rank and the share of other ranked players with a worse average.
 
 ### Identity

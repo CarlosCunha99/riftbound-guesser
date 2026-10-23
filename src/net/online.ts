@@ -27,6 +27,8 @@ export interface LeaderRow {
   played: number;
   winRate: number;
   isMe: boolean;
+  /** Consecutive winning Dailies ending today or yesterday. */
+  streak: number;
 }
 
 export interface Standing {
@@ -39,6 +41,7 @@ export interface Standing {
   played: number;
   winRate: number | null;
   winsNeeded: number;
+  streak: number;
 }
 
 /**
@@ -146,6 +149,7 @@ export async function leaderboard(period: Period, limit = 50): Promise<LeaderRow
     played: Number(r.played),
     winRate: Number(r.win_rate),
     isMe: !!r.is_me,
+    streak: Number(r.streak ?? 0),
   }));
 }
 
@@ -165,6 +169,7 @@ export async function myStanding(period: Period): Promise<Standing | null> {
     played: Number(r.played ?? 0),
     winRate: num(r.win_rate),
     winsNeeded: Number(r.wins_needed ?? 0),
+    streak: Number(r.streak ?? 0),
   };
 }
 
