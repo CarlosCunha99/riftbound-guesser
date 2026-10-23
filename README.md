@@ -129,6 +129,7 @@ Players start as **guests** (anonymous Supabase users, created the first time th
 5. Recommended: enable **Attack Protection → CAPTCHA** or keep the default rate limits for anonymous sign-ins.
 6. Copy **Project Settings → API → Project URL** and the **anon public** key, then set them as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`:
    - in Vercel → Project → Settings → **Environment Variables** (Production and Preview), and redeploy (publish a release for production);
+   - (Vercel's Supabase integration's `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are also accepted, so no extra variables are needed if you use it);
    - locally in `.env.local` (git-ignored).
 
 The anon key is meant to be public. All writes go through `security definer` functions, and Row Level Security blocks direct inserts, updates and deletes.
