@@ -10,7 +10,11 @@ import {
   pendingResults,
   percentBetter,
   scoreOf,
+  usernameFromEmail,
+  usernameToEmail,
   validateNickname,
+  validatePassword,
+  validateUsername,
 } from './ranking';
 import type { DailyHistory, DailyState } from './storage';
 
@@ -97,5 +101,23 @@ describe('pending submissions', () => {
     expect(pendingResults(h, {}, 9)).toEqual([]);
     expect(pendingResults({ 9: st(9) }, { 9: 'ok' }, 9)).toEqual([]);
     expect(pendingResults({ 9: st(9) }, { 9: 'rejected' }, 9)).toEqual([]);
+  });
+});
+
+describe('accounts', () => {
+  it('normalizes and validates usernames', () => {
+    expect(validateUsername('  Rift_Fan-1 ')).toEqual({ ok: true, value: 'rift_fan-1' });
+    for (const bad of ['ab', 'a'.repeat(17), 'has space', 'bad!', 'a@b.c']) expect(validateUsername(bad).ok).toBe(false);
+  });
+  it('requires 8+ character passwords', () => {
+    expect(validatePassword('1234567')).not.toBeNull();
+    expect(validatePassword('12345678')).toBeNull();
+  });
+  it('maps usernames to made-up emails and back', () => {
+    const email = usernameToEmail('Rift_Fan');
+    expect(email).toBe('rift_fan@riftguessr.app');
+    expect(usernameFromEmail(email)).toBe('rift_fan');
+    expect(usernameFromEmail('x@gmail.com')).toBeNull();
+    expect(usernameFromEmail(undefined)).toBeNull();
   });
 });

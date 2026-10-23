@@ -115,7 +115,7 @@ The leaderboard uses a free [Supabase](https://supabase.com/) project (Postgres 
 
 ### Identity
 
-Players start as **anonymous** Supabase users (created the first time they finish a Daily or pick a nickname), so there's no sign-up. "Sign in to keep your history" links GitHub or Google to the *same* user id (`linkIdentity`), so history carries over to other devices. If that GitHub/Google account already has its own player, the app signs in to that one instead.
+Players start as **guests** (anonymous Supabase users, created the first time they finish a Daily or pick a nickname). To keep their history on other devices they can **create an account with just a username and password**, which turns the guest into a registered user with the *same* user id. Supabase Auth needs an email, so the username is mapped to a made-up address (`<username>@riftguessr.app`); nobody is emailed, and that also means **there is no password reset**. No external providers (Google, GitHub) are used.
 
 ### Setup
 
@@ -123,9 +123,8 @@ Players start as **anonymous** Supabase users (created the first time they finis
 2. Run the migration in `supabase/migrations/` — paste it into **SQL Editor → New query → Run**, or use the CLI: `supabase link --project-ref <ref>` then `supabase db push`.
 3. **Authentication → Sign In / Providers**:
    - Turn on **Allow anonymous sign-ins**.
-   - Turn on **Allow manual linking** (needed for "Sign in to keep your history").
-   - Enable **GitHub** (create an OAuth app at GitHub → Settings → Developer settings) and **Google** (Google Cloud console → OAuth client). Use the callback URL that Supabase shows, `https://<ref>.supabase.co/auth/v1/callback`.
-4. **Authentication → URL Configuration**: set **Site URL** to your production domain (e.g. `https://riftguessr.vercel.app`) and add **Redirect URLs** for `https://*.vercel.app/**` (previews) and `http://127.0.0.1:5173/**` (local dev).
+   - Make sure **Email** is enabled and turn **Confirm email OFF** (usernames use made-up addresses, so confirmation emails can never be answered).
+4. Optional: under **Authentication → Providers → Email**, keep the minimum password length at 8 or more.
 5. Recommended: enable **Attack Protection → CAPTCHA** or keep the default rate limits for anonymous sign-ins.
 6. Copy **Project Settings → API → Project URL** and the **anon public** key, then set them as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`:
    - in Vercel → Project → Settings → **Environment Variables** (Production and Preview), and redeploy (publish a release for production);

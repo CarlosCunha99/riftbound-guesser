@@ -130,6 +130,9 @@ export class Storage {
   get sent(): SentLog {
     return this.read<SentLog>(KEYS.sent, {});
   }
+  clearSent() {
+    this.write(KEYS.sent, {});
+  }
   markSent(day: number, outcome: 'ok' | 'rejected') {
     this.write(KEYS.sent, { ...this.sent, [day]: outcome });
   }

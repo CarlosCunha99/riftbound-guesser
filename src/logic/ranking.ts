@@ -89,6 +89,37 @@ export function validateNickname(raw: string): NicknameCheck {
   return { ok: true, value };
 }
 
+// ---------- accounts ----------
+
+export const PASSWORD_MIN = 8;
+const EMAIL_DOMAIN = 'riftguessr.app';
+
+export type UsernameCheck = { ok: true; value: string } | { ok: false; error: string };
+
+/** Login names are 3-16 letters, numbers, "_" or "-". They are case-insensitive. */
+export function validateUsername(raw: string): UsernameCheck {
+  const value = raw.trim().toLowerCase();
+  if (value.length < NICK_MIN) return { ok: false, error: `Use at least ${NICK_MIN} characters.` };
+  if (value.length > NICK_MAX) return { ok: false, error: `Use at most ${NICK_MAX} characters.` };
+  if (!/^[a-z0-9_-]+$/.test(value)) return { ok: false, error: 'Use letters, numbers, - or _ only (no spaces).' };
+  if (isProfane(value)) return { ok: false, error: 'Please pick a different username.' };
+  return { ok: true, value };
+}
+
+export function validatePassword(pw: string): string | null {
+  return pw.length >= PASSWORD_MIN ? null : `Use at least ${PASSWORD_MIN} characters.`;
+}
+
+/** Supabase logins need an email, so the username is mapped to a made-up one. Nobody is emailed. */
+export function usernameToEmail(username: string): string {
+  return `${username.trim().toLowerCase()}@${EMAIL_DOMAIN}`;
+}
+
+export function usernameFromEmail(email: string | undefined | null): string | null {
+  const suffix = `@${EMAIL_DOMAIN}`;
+  return email && email.endsWith(suffix) ? email.slice(0, -suffix.length) : null;
+}
+
 // ---------- submissions ----------
 
 export interface PendingResult {
