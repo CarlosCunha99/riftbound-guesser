@@ -792,7 +792,7 @@ export class App {
       else this.renderLeaderboard();
     } catch (e) {
       err.textContent =
-        e instanceof OnlineError && e.kind === 'rejected'
+        e instanceof OnlineError && e.kind !== 'network'
           ? e.message
           : navigator.onLine
             ? "Couldn't save your nickname. Try again."

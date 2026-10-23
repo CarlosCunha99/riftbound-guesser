@@ -122,6 +122,7 @@ async function ensureUser(): Promise<void> {
   } catch (e) {
     throw new OnlineError(String((e as Error)?.message ?? e), 'network');
   }
+  if (error?.code === 'anonymous_provider_disabled') throw new OnlineError('Create an account (below) to join the leaderboard.', 'config', error.code);
   if (error) throw new OnlineError(error.message, 'network', error.code ?? '');
 }
 
@@ -185,35 +186,17 @@ const authError = (e: { message: string; code?: string; status?: number }, fallb
 };
 
 /**
- * Turns the current guest into a registered account (same user id, so history is kept) by attaching
- * a username and password. Needs "Confirm email" turned off in Supabase, because the email is made up.
+ * Creates a username + password account and signs in to it. A guest keeps their user id, so their
+ * results and nickname carry over. The account is created by the register_account RPC (see the
+ * migrations) because the made-up email would fail Supabase's own email checks.
  */
 export async function createAccount(username: string, password: string): Promise<void> {
   const sb = await client();
   const { data: cur } = await sb.auth.getSession();
   if (cur.session && !cur.session.user.is_anonymous) throw new OnlineError('You are already signed in', 'rejected');
-  const email = usernameToEmail(username);
-  let res;
-  let confirmed: boolean;
-  try {
-    if (cur.session) {
-      const r = await sb.auth.updateUser({ email, password });
-      res = r;
-      confirmed = !!r.data.user?.email;
-    } else {
-      const r = await sb.auth.signUp({ email, password });
-      res = r;
-      confirmed = !!r.data.session;
-    }
-  } catch (e) {
-    throw new OnlineError(String((e as Error)?.message ?? e), 'network');
-  }
-  if (res.error) throw authError(res.error, "Couldn't create the account");
-  if (!confirmed) {
-    throw new OnlineError('Accounts are not enabled yet: turn off "Confirm email" in Supabase → Authentication → Sign In / Providers → Email.', 'config');
-  }
+  await rpc('register_account', { p_username: username, p_password: password });
+  await signInWithPassword(username, password);
 }
-
 /** Signs in to an existing account. This replaces the current guest session. */
 export async function signInWithPassword(username: string, password: string): Promise<void> {
   const sb = await client();
