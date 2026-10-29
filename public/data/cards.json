@@ -38,7 +38,7 @@
    "Pirate",
    "Bilgewater"
   ],
-  "ability": "As you play me, you may discard 1 as an additional cost. If you do, reduce my cost by [2].",
+  "ability": "As you play me, you may discard a card as an additional cost. If you do, reduce my cost by [2].",
   "artist": "Six More Vodka"
  },
  {
@@ -2389,7 +2389,7 @@
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/c44cd1f6f41144c770ac79f10e5ae75f0c6d6435-744x1039.png",
   "labels": [],
   "tags": [],
-  "ability": "Exhaust all friendly units, then deal 12 to ALL units at battlefields.",
+  "ability": "Exhaust all friendly units, then deal 12 to all units at battlefields.",
   "artist": "Kudos Productions"
  },
  {
@@ -3061,7 +3061,7 @@
    "Volibear",
    "Freljord"
   ],
-  "ability": "[Shield 3] (+3 [S] while I'm a defender.)\n[Tank] (I must be assigned combat damage first.)\nWhen an opponent moves to a battlefield other than mine, draw 1. (Bases are not battlefield.)",
+  "ability": "[Shield 3] (+3 [S] while I'm a defender.)\n[Tank] (I must be assigned combat damage first.)\nWhen an opponent moves to a battlefield other than mine, draw 1. (Bases are not battlefields.)",
   "artist": "Envar Studio"
  },
  {
@@ -3594,7 +3594,7 @@
   "title": "Whirlwind",
   "type": "Spell",
   "domain": "Chaos",
-  "cost": 3,
+  "cost": 4,
   "power": 1,
   "might": null,
   "set": "Origins",
@@ -5165,7 +5165,7 @@
   "tags": [
    "Teemo"
   ],
-  "ability": "Return up to two cards with [Hidden] from your trash to your hand. You can hide cards ignoring costs this turn.",
+  "ability": "Return up to two cards with [Hidden] from your trash to your hand. You can hide ignoring costs this turn.",
   "artist": "Kudos Productions"
  },
  {
@@ -5834,7 +5834,7 @@
    "Annie",
    "Noxus"
   ],
-  "ability": "Your spells and abilities deal 1 Bonus Damage. (Each instance of damage the spell deals is increased by 1.)",
+  "ability": "Your spells and abilities deal 1 Bonus Damage. (Each instance of damage they deal is increased by 1.)",
   "artist": "Polar Engine Studio"
  },
  {
@@ -6997,7 +6997,7 @@
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/fc59661dfc70a1fdb393d795c90779a2b5661609-744x1039.png",
   "labels": [],
   "tags": [],
-  "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\nWhen a stunned enemy unit dies here, draw 1.",
+  "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\nWhen a stunned enemy unit here dies, draw 1.",
   "artist": "Bubble Cat Studio"
  },
  {
@@ -10742,7 +10742,7 @@
   "artist": "Envar Studio"
  },
  {
-  "id": "sfd-054a-221",
+  "id": "sfd-054-221",
   "name": "Jax, Unmatched",
   "title": "Jax, Unmatched",
   "type": "Champion",
@@ -10752,8 +10752,8 @@
   "might": 5,
   "set": "Spiritforged",
   "setCode": "SFD",
-  "rarity": "Showcase",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/1d2eae793e415c5f53d7b11c335b5f0ed08c2086-744x1039.png",
+  "rarity": "Rare",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/3d425589c74dbff818fa09db134fdd8bb7136420-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -10762,7 +10762,7 @@
    "Icathia"
   ],
   "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\nYour Equipment everywhere have [Quick-Draw]. (Each gains [Reaction]. When you play it, attach it to a unit you control.)",
-  "artist": "League Splash Team"
+  "artist": "Envar Studio"
  },
  {
   "id": "sfd-055-221",
@@ -12616,7 +12616,7 @@
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/a4338f495feff5eee46d5349b5fded5e35e76176-744x1039.png",
   "labels": [],
   "tags": [],
-  "ability": "[Hidden] (Hide now for [A] to react with later for [0].)\n[Action] (Play on your turn or in showdowns.)\nSwap the Might of two units at the same battlefield this turn.",
+  "ability": "[Hidden] (Hide now for [A] to react with later for [0].)\n[Action] (Play on your turn or in showdowns.)\nSwap the Mights of two units at the same battlefield this turn.",
   "artist": "Kudos Productions"
  },
  {
@@ -13292,8 +13292,8 @@
  },
  {
   "id": "sfd-179-221",
-  "name": "Corinna Veraza",
-  "title": "Corinna Veraza",
+  "name": "Corina Veraza",
+  "title": "Corina Veraza",
   "type": "Unit",
   "domain": "Order",
   "cost": 7,
@@ -14080,7 +14080,7 @@
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/8b9db30f8eedd5e5463a0fceaeaf90069bce39ae-1039x744.png",
   "labels": [],
   "tags": [],
-  "ability": "When you conquer here, draw 1 for each other battlefield you or allies control..",
+  "ability": "When you conquer here, draw 1 for each other battlefield you or allies control.",
   "artist": "Kudos Productions"
  },
  {
@@ -14297,7 +14297,7 @@
   "artist": "Envar Studio"
  },
  {
-  "id": "sfd-232-221",
+  "id": "sfd-232-star-221",
   "name": "Sett, Brawler — Spiritforged",
   "title": "Sett, Brawler",
   "type": "Champion",
@@ -14308,7 +14308,7 @@
   "set": "Spiritforged",
   "setCode": "SFD",
   "rarity": "Showcase",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/a13d5473e205cb9dd8123895c58ed6ac8f19e814-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ea35315d12a86cff8e37fa716c92dc76d9edceb8-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -14382,7 +14382,7 @@
   "artist": "Shishizaru"
  },
  {
-  "id": "sfd-237-221",
+  "id": "sfd-237-star-221",
   "name": "Karma, Channeler — Spiritforged",
   "title": "Karma, Channeler",
   "type": "Champion",
@@ -14393,7 +14393,7 @@
   "set": "Spiritforged",
   "setCode": "SFD",
   "rarity": "Showcase",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ba0113d449813c94534ae0e74f3ef38f9b8010c2-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/2e2c1cb4016543e3288da2dac3ecc3faf8a98927-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -14846,7 +14846,7 @@
   "artist": "Wild Blue Studios"
  },
  {
-  "id": "unl-022a-219",
+  "id": "unl-022-219",
   "name": "Jhin, Murderous Artist",
   "title": "Jhin, Murderous Artist",
   "type": "Champion",
@@ -14857,7 +14857,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Rare",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/0e67164270e12b8d91905e977a314c7248a343e9-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/8da724a842cf61cb24c3c02dd99adc93a9222e06-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -14865,8 +14865,8 @@
    "Jhin",
    "Ionia"
   ],
-  "ability": "[Deflect]\n[Ganking]\nWhen I move, [Add] [1][A].",
-  "artist": "League Splash Team"
+  "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\n[Ganking] (I can move from battlefield to battlefield.)\nWhen I move, [Add] [1][A]. (Abilities that add resources can't be reacted to.)",
+  "artist": "Alessandro Poli"
  },
  {
   "id": "unl-023-219",
@@ -15024,7 +15024,7 @@
   "artist": "JunHuan"
  },
  {
-  "id": "unl-030a-219",
+  "id": "unl-030-219",
   "name": "Vi, Hotheaded",
   "title": "Vi, Hotheaded",
   "type": "Champion",
@@ -15035,7 +15035,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Epic",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/646df8e81d42025a558112775fc1032c86cab2d0-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/03a55e8d494d7efe20da792365161f5c43c20779-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -15043,8 +15043,8 @@
    "Vi",
    "Zaun"
   ],
-  "ability": "[Deflect]\n[2][C]: Double my Might this turn.",
-  "artist": "League Splash Team"
+  "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\n[2][C]: Double my Might this turn.",
+  "artist": "Envar Studio"
  },
  {
   "id": "unl-031-219",
@@ -15317,7 +15317,7 @@
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/77bd864b29f4975868e557e31a39b94d06a4ecb2-744x1039.png",
   "labels": [],
   "tags": [],
-  "ability": "[Reaction]\nChoose one —\n- Counter a spell.\n- Play four 1 [S] Bird unit tokens with [Deflect]. (Opponents must pay [A] to choose them with a spell or ability.)",
+  "ability": "[Reaction] (Play any time, even before spells and abilities resolve.)\nChoose one —\n- Counter a spell.\n- Play four 1 [S] Bird unit tokens with [Deflect]. (Opponents must pay [A] to choose them with a spell or ability.)",
   "artist": "Polar Engine Studio"
  },
  {
@@ -15521,7 +15521,7 @@
   "artist": "Kudos Productions"
  },
  {
-  "id": "unl-055a-219",
+  "id": "unl-055-219",
   "name": "Vex, Mocking",
   "title": "Vex, Mocking",
   "type": "Champion",
@@ -15532,7 +15532,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Rare",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/9594ce4be31689c364a43954a541c4391fe0d4f3-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ed2c20de6ceb7ff23f62ccb28a49fd305c5b15b7-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -15541,8 +15541,8 @@
    "Vex",
    "Shadow Isles"
   ],
-  "ability": "[Shield]\n[Tank]\nWhen you [Stun] an enemy unit at a battlefield, you may move me to that battlefield.",
-  "artist": "League Splash Team"
+  "ability": "[Shield] (+1 [S] while I'm a defender.)\n[Tank] (I must be assigned combat damage first.)\nWhen you [Stun] an enemy unit at a battlefield, you may move me to that battlefield.",
+  "artist": "Envar Studio"
  },
  {
   "id": "unl-056-219",
@@ -15591,7 +15591,7 @@
   "artist": "Six More Vodka"
  },
  {
-  "id": "unl-058a-219",
+  "id": "unl-058-219",
   "name": "Lillia, Protector of Dreams",
   "title": "Lillia, Protector of Dreams",
   "type": "Champion",
@@ -15602,7 +15602,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Epic",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/92cdae8b6bfef70d0a38761f1dc4aa771a37753a-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/daa5fe15e0a1c14c8dbb8f858d8a6d444ea6096e-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -15611,7 +15611,7 @@
    "Lillia",
    "Ionia"
   ],
-  "ability": "When you play a token unit, give me +1 [S] this turn.\nYour token units have [Tank].",
+  "ability": "When you play a token unit, give me +1 [S] this turn.\nYour token units have [Tank]. (They must be assigned combat damage first.)",
   "artist": "League Splash Team"
  },
  {
@@ -16070,7 +16070,7 @@
   "artist": "Six More Vodka"
  },
  {
-  "id": "unl-082a-219",
+  "id": "unl-082-219",
   "name": "Lillia, Fae Fawn",
   "title": "Lillia, Fae Fawn",
   "type": "Champion",
@@ -16081,7 +16081,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Rare",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/b06072002316a5b86f11750bbe21e9dfb94be08d-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/65d0af5361b335a7e65c7aa03a099fc0de3431e6-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -16090,8 +16090,8 @@
    "Lillia",
    "Ionia"
   ],
-  "ability": "[Accelerate]\nWhen I move from a location, play a 3 [S] Sprite unit token with [Temporary] there.",
-  "artist": "League Splash Team"
+  "ability": "[Accelerate] (You may pay [1][C] as an additional cost to have me enter ready.)\nWhen I move from a location, play a 3 [S] Sprite unit token with [Temporary] there. (Kill it at the start of its controller's Beginning Phase, before scoring.)",
+  "artist": "Envar Studio"
  },
  {
   "id": "unl-083-219",
@@ -16174,7 +16174,7 @@
   "artist": "Six More Vodka"
  },
  {
-  "id": "unl-087a-219",
+  "id": "unl-087-219",
   "name": "Blue Sentinel",
   "title": "Blue Sentinel",
   "type": "Unit",
@@ -16185,10 +16185,12 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Epic",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/d6c05e13dfb9ce38cc4d829d33acaf1560abe62a-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/bec7e8f108fac2d9c94db01c85cf143133d13325-744x1039.png",
   "labels": [],
-  "tags": [],
-  "ability": "[Shield 2]\nYour hold effects for holding here trigger an additional time.\nWhen I hold, [Add] [A] at the start of your next Main Phase.",
+  "tags": [
+   "Mount Targon"
+  ],
+  "ability": "[Shield 2] (+2 [S] while I'm a defender.)\nYour hold effects for holding here trigger an additional time.\nWhen I hold, [Add] [A] at the start of your next Main Phase. (Abilities that add resources can't be reacted to.)",
   "artist": "Grafit Studio"
  },
  {
@@ -16821,7 +16823,7 @@
   "artist": "Sugar Free"
  },
  {
-  "id": "unl-119a-219",
+  "id": "unl-119-219",
   "name": "Kha'Zix, Evolving Hunter — Unleashed",
   "title": "Kha'Zix, Evolving Hunter",
   "type": "Champion",
@@ -16832,7 +16834,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Epic",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/6998b6c309c93d549284638ff0a3e20c75691978-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ac07031af5b35881d781b7a7d7b78c59a0fb2cd4-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -16840,7 +16842,7 @@
    "Kha'Zix",
    "The Void"
   ],
-  "ability": "[Hunt]\nWhen I attack, you may spend 3 XP to deal damage equal to my Might to an enemy unit here.",
+  "ability": "[Hunt] (When I conquer or hold, gain 1 XP.)\nWhen I attack, you may spend 3 XP to deal damage equal to my Might to an enemy unit here.",
   "artist": "League Splash Team"
  },
  {
@@ -17381,7 +17383,7 @@
   "artist": "Naifan Zhang"
  },
  {
-  "id": "unl-147a-219",
+  "id": "unl-147-219",
   "name": "Baron Nashor",
   "title": "Baron Nashor",
   "type": "Unit",
@@ -17392,12 +17394,12 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Epic",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/97d0f7aa81f67bf8f4a19099c648a23a2df169ae-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/59946969e8d21869c3ffe801a3ffbdd8165a873f-744x1039.png",
   "labels": [],
   "tags": [
    "The Void"
   ],
-  "ability": "As you play me, add the Baron Pit battlefield token to the board if it's not there already. If you do, I enter there.\nI can't be chosen by enemy spells and abilities.\nOther friendly units have +2 [S].",
+  "ability": "As you play me, add the Baron Pit battlefield token to the board if it's not there already. If you do, I enter there. (It has \"Units can move here from anywhere.\")\nI can't be chosen by enemy spells and abilities.\nOther friendly units have +2 [S].",
   "artist": "黯荧岛Dark Glow"
  },
  {
@@ -17442,7 +17444,7 @@
   "artist": "Six More Vodka"
  },
  {
-  "id": "unl-150a-219",
+  "id": "unl-150-219",
   "name": "Vex, Apathetic",
   "title": "Vex, Apathetic",
   "type": "Champion",
@@ -17453,7 +17455,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Epic",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/9dd2a50fcfe6258ef934bdcf73b2fdb19d18ea94-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7f13b0216c5d805400bb64cf26cd119acfc6c5ca-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -17462,7 +17464,7 @@
    "Vex",
    "Shadow Isles"
   ],
-  "ability": "[Deflect]\nWhen an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn.",
+  "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\nWhen an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn. (It doesn't deal combat damage this turn.)",
   "artist": "League Splash Team"
  },
  {
@@ -17664,7 +17666,7 @@
    "Poro",
    "Freljord"
   ],
-  "ability": "[T]: Play two [1] [S] Bird unit tokens with [Deflect]. Use this ability only while I'm at a battlefield. (Opponents must pay [A] to choose a [Deflect] unit with a spell or ability.)",
+  "ability": "[T]: Play two 1 [S] Bird unit tokens with [Deflect]. Use this ability only while I'm at a battlefield. (Opponents must pay [A] to choose a [Deflect] unit with a spell or ability.)",
   "artist": "Caravan Studio"
  },
  {
@@ -17893,7 +17895,7 @@
   "artist": "Six More Vodka"
  },
  {
-  "id": "unl-172a-219",
+  "id": "unl-172-219",
   "name": "LeBlanc, Fragmented",
   "title": "LeBlanc, Fragmented",
   "type": "Champion",
@@ -17904,7 +17906,7 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Rare",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/d18932d3dddd203c6f68f30279f3886ec2e7130a-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ee9f8d7a65e57c1d907edd4e5df2a3ea6966bff9-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -17912,7 +17914,7 @@
    "Noxus",
    "LeBlanc"
   ],
-  "ability": "[Assault]\n[Deathknell][>] Draw 1. If it's your Beginning Phase, draw 2 instead.",
+  "ability": "[Assault] (+1 [S] while I'm an attacker.)\n[Deathknell][>] Draw 1. If it's your Beginning Phase, draw 2 instead. (When I die, get the effect.)",
   "artist": "League Splash Team"
  },
  {
@@ -18040,7 +18042,7 @@
   "artist": "Dao Trong Le"
  },
  {
-  "id": "unl-179a-219",
+  "id": "unl-179-219",
   "name": "Rift Herald",
   "title": "Rift Herald",
   "type": "Unit",
@@ -18051,12 +18053,12 @@
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Epic",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e8fe608bffa46642e454b0b34f7524c5daef299e-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/4da94f3af92222bebe7be49197ef8d840772d73d-744x1039.png",
   "labels": [],
   "tags": [
    "The Void"
   ],
-  "ability": "When I move to a battlefield, look at the top 3 cards of your Main Deck. You may reveal a unit from among them and draw it. Recycle the rest.\n[Deathknell][>] Play a unit from your hand to your base, ignoring its Energy cost.",
+  "ability": "When I move to a battlefield, look at the top 3 cards of your Main Deck. You may reveal a unit from among them and draw it. Recycle the rest.\n[Deathknell][>] Play a unit from your hand to your base, ignoring its Energy cost. (When I die, get the effect. You must still pay its Power cost.)",
   "artist": "Grafit Studio"
  },
  {
@@ -18865,7 +18867,7 @@
   "might": 2,
   "set": "Unleashed",
   "setCode": "UNL",
-  "rarity": "Common",
+  "rarity": "Showcase",
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/0c91b90d91c4f988aa9942dd9e06a634a66c6975-744x1039.png",
   "labels": [],
   "tags": [
@@ -18885,7 +18887,7 @@
   "might": 2,
   "set": "Unleashed",
   "setCode": "UNL",
-  "rarity": "Common",
+  "rarity": "Showcase",
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/82b7043ef6519a4c7e2eb7d45cb6ae91dfd749ca-744x1039.png",
   "labels": [],
   "tags": [
@@ -18906,7 +18908,7 @@
   "might": 2,
   "set": "Unleashed",
   "setCode": "UNL",
-  "rarity": "Common",
+  "rarity": "Showcase",
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/c6c996fcead364682a031f32948a084101d83493-744x1039.png",
   "labels": [],
   "tags": [
@@ -18928,7 +18930,7 @@
   "might": 2,
   "set": "Unleashed",
   "setCode": "UNL",
-  "rarity": "Common",
+  "rarity": "Showcase",
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/337f38fae6a4d801fc14abcda2a7d09c3e7e6ae3-744x1039.png",
   "labels": [],
   "tags": [
@@ -18949,7 +18951,7 @@
   "might": 2,
   "set": "Unleashed",
   "setCode": "UNL",
-  "rarity": "Common",
+  "rarity": "Showcase",
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/2fdb5e1ff9aae4137910fa59065b69ef17144752-744x1039.png",
   "labels": [],
   "tags": [
@@ -18969,7 +18971,7 @@
   "might": 2,
   "set": "Unleashed",
   "setCode": "UNL",
-  "rarity": "Common",
+  "rarity": "Showcase",
   "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/9b097e8f9866788e0de2bfada48627c752d3e4b9-744x1039.png",
   "labels": [],
   "tags": [
@@ -19048,7 +19050,7 @@
   "domain": "Colorless",
   "cost": null,
   "power": 0,
-  "might": null,
+  "might": 1,
   "set": "Unleashed",
   "setCode": "UNL",
   "rarity": "Common",
@@ -20320,8 +20322,8 @@
  },
  {
   "id": "ven-060-166",
-  "name": "Sky Crusier",
-  "title": "Sky Crusier",
+  "name": "Sky Cruiser",
+  "title": "Sky Cruiser",
   "type": "Unit",
   "domain": "Mind",
   "cost": 4,
