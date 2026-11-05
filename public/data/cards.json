@@ -10742,7 +10742,7 @@
   "artist": "Envar Studio"
  },
  {
-  "id": "sfd-054-221",
+  "id": "sfd-054a-221",
   "name": "Jax, Unmatched",
   "title": "Jax, Unmatched",
   "type": "Champion",
@@ -10752,8 +10752,8 @@
   "might": 5,
   "set": "Spiritforged",
   "setCode": "SFD",
-  "rarity": "Rare",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/3d425589c74dbff818fa09db134fdd8bb7136420-744x1039.png",
+  "rarity": "Showcase",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/1d2eae793e415c5f53d7b11c335b5f0ed08c2086-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -10762,7 +10762,7 @@
    "Icathia"
   ],
   "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\nYour Equipment everywhere have [Quick-Draw]. (Each gains [Reaction]. When you play it, attach it to a unit you control.)",
-  "artist": "Envar Studio"
+  "artist": "League Splash Team"
  },
  {
   "id": "sfd-055-221",
@@ -12072,7 +12072,7 @@
   "artist": "Envar Studio"
  },
  {
-  "id": "sfd-119a-221",
+  "id": "sfd-119-221",
   "name": "Jax, Unrelenting",
   "title": "Jax, Unrelenting",
   "type": "Champion",
@@ -12082,8 +12082,8 @@
   "might": 3,
   "set": "Spiritforged",
   "setCode": "SFD",
-  "rarity": "Showcase",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/a5796125bdb0af8ceb60cd0c5c273c6417e0f7da-744x1039.png",
+  "rarity": "Epic",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e63ab3370a6e4ce4baddfba12ab92468f6cc9541-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -12092,7 +12092,7 @@
    "Icathia"
   ],
   "ability": "[Weaponmaster] (When you play me, you may [Equip] one of your Equipment to me for [A] less, even if it's already attached.)\nWhen you attach an Equipment to me, you may pay [1] to draw 1.",
-  "artist": "League Splash Team"
+  "artist": "Envar Studio"
  },
  {
   "id": "sfd-120-221",
