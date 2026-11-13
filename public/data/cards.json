@@ -3287,26 +3287,6 @@
   "artist": "Rafael Zanchetin"
  },
  {
-  "id": "ogn-171-298",
-  "name": "Mystic Poro — Origins",
-  "title": "Mystic Poro",
-  "type": "Unit",
-  "domain": "Chaos",
-  "cost": 2,
-  "power": 0,
-  "might": 2,
-  "set": "Origins",
-  "setCode": "OGN",
-  "rarity": "Common",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/11af57d045768e886d05e1c0933b0d57cb1e459d-744x1039.png",
-  "labels": [],
-  "tags": [
-   "Poro"
-  ],
-  "ability": "[Vision] (When you play me, look at the top card of your Main Deck. You may recycle it.)",
-  "artist": "Kudos Productions"
- },
- {
   "id": "ogn-172-298",
   "name": "Rebuke",
   "title": "Rebuke",
@@ -10742,7 +10722,7 @@
   "artist": "Envar Studio"
  },
  {
-  "id": "sfd-054a-221",
+  "id": "sfd-054-221",
   "name": "Jax, Unmatched",
   "title": "Jax, Unmatched",
   "type": "Champion",
@@ -10752,8 +10732,8 @@
   "might": 5,
   "set": "Spiritforged",
   "setCode": "SFD",
-  "rarity": "Showcase",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/1d2eae793e415c5f53d7b11c335b5f0ed08c2086-744x1039.png",
+  "rarity": "Rare",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/3d425589c74dbff818fa09db134fdd8bb7136420-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -10762,7 +10742,7 @@
    "Icathia"
   ],
   "ability": "[Deflect] (Opponents must pay [A] to choose me with a spell or ability.)\nYour Equipment everywhere have [Quick-Draw]. (Each gains [Reaction]. When you play it, attach it to a unit you control.)",
-  "artist": "League Splash Team"
+  "artist": "Envar Studio"
  },
  {
   "id": "sfd-055-221",
@@ -14382,7 +14362,7 @@
   "artist": "Shishizaru"
  },
  {
-  "id": "sfd-237-star-221",
+  "id": "sfd-237-221",
   "name": "Karma, Channeler — Spiritforged",
   "title": "Karma, Channeler",
   "type": "Champion",
@@ -14393,7 +14373,7 @@
   "set": "Spiritforged",
   "setCode": "SFD",
   "rarity": "Showcase",
-  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/2e2c1cb4016543e3288da2dac3ecc3faf8a98927-744x1039.png",
+  "image": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ba0113d449813c94534ae0e74f3ef38f9b8010c2-744x1039.png",
   "labels": [
    "Champion"
   ],
@@ -18942,7 +18922,7 @@
  },
  {
   "id": "unl-224-219",
-  "name": "Mystic Poro — Unleashed",
+  "name": "Mystic Poro",
   "title": "Mystic Poro",
   "type": "Unit",
   "domain": "Chaos",
